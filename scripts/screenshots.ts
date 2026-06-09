@@ -59,7 +59,7 @@ async function main() {
   // 4. start the round and trace a word with synthetic touches
   await page.evaluate(() => {
     const buttons = [...document.querySelectorAll('button')]
-    buttons.find((b) => b.textContent?.includes('Play this board'))?.click()
+    buttons.find((b) => b.textContent?.startsWith('Play'))?.click()
   })
   await page.waitForSelector('.board-grid', { timeout: 10_000 })
   await sleep(400)

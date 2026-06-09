@@ -33,7 +33,7 @@ export function Home({ navigate, onIdentityLost }: HomeProps) {
       })
       navigate(`/l/${lounge.code}`)
     } catch {
-      showToast('Could not deal a board — try again')
+      showToast('Could not create a board — try again')
       setBusy(false)
     }
   }
@@ -55,7 +55,7 @@ export function Home({ navigate, onIdentityLost }: HomeProps) {
 
       <div class="panel stack">
         <p class="kicker" style={{ margin: 0 }}>
-          Deal a board
+          New game
         </p>
         <div class="seg">
           <button class={mode === 'casual' ? 'on' : ''} onClick={() => setMode('casual')}>
@@ -82,13 +82,12 @@ export function Home({ navigate, onIdentityLost }: HomeProps) {
               ))}
             </div>
             <p class="muted" style={{ margin: 0 }}>
-              Everyone in the thread has {windowH}h to play. Then standings lock and Elo
-              settles up.
+              Everyone has {windowH}h to play. Then standings lock and Elo updates.
             </p>
           </>
         )}
         <button class="btn btn-primary" disabled={busy} onClick={create}>
-          {busy ? 'Dealing…' : 'Deal board'}
+          {busy ? 'Creating…' : 'Create board'}
         </button>
       </div>
 
@@ -98,7 +97,7 @@ export function Home({ navigate, onIdentityLost }: HomeProps) {
         <>
           {profile.recent.length > 0 && (
             <div class="panel">
-              <p class="kicker">Recent boards</p>
+              <p class="kicker">Recent games</p>
               <div>
                 {profile.recent.map((r) => (
                   <a key={r.code + r.started_at} class="recent-row" href={`/l/${r.code}`}
@@ -124,7 +123,7 @@ export function Home({ navigate, onIdentityLost }: HomeProps) {
             <div class="row space">
               <div>
                 <p class="kicker" style={{ margin: 0 }}>
-                  Membership
+                  You
                 </p>
                 <p class="display" style={{ fontSize: 22, marginTop: 4 }}>
                   {profile.name}
@@ -140,14 +139,14 @@ export function Home({ navigate, onIdentityLost }: HomeProps) {
                 </p>
               </div>
               <button class="btn btn-ghost btn-small" onClick={() => setShowCode((s) => !s)}>
-                {showCode ? 'Hide code' : 'Claim code'}
+                {showCode ? 'Hide code' : 'Backup code'}
               </button>
             </div>
             {showCode && (
               <div class="fade-in stack">
                 <div class="code-chip">{profile.claimCode}</div>
                 <p class="muted" style={{ margin: 0 }}>
-                  Restores your rating on a new device. Keep it private.
+                  Restores your name and rating on a new device. Keep it private.
                 </p>
               </div>
             )}

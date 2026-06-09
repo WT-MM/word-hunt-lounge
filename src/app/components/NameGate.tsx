@@ -7,8 +7,8 @@ interface NameGateProps {
 }
 
 /**
- * First-run gate: pick a name, or restore a membership with a claim code.
- * After creating, the claim code is shown ONCE prominently — iOS evicts
+ * First-run gate: pick a name, or restore your stats with a backup code.
+ * After creating, the backup code is shown ONCE prominently — iOS evicts
  * localStorage after ~7 days away, so this is the recovery path.
  */
 export function NameGate({ onReady }: NameGateProps) {
@@ -34,7 +34,11 @@ export function NameGate({ onReady }: NameGateProps) {
       saveIdentity(identity)
       setCreated(identity)
     } catch (err) {
-      setError(err instanceof ApiError && err.code === 'invalid_name' ? 'Try a different name.' : 'Something went wrong — try again.')
+      setError(
+        err instanceof ApiError && err.code === 'invalid_name'
+          ? 'Try a different name.'
+          : 'Something went wrong — try again.',
+      )
     } finally {
       setBusy(false)
     }
@@ -55,7 +59,7 @@ export function NameGate({ onReady }: NameGateProps) {
       saveIdentity(identity)
       onReady(identity)
     } catch {
-      setError('No membership found for that code.')
+      setError('No player found for that code.')
     } finally {
       setBusy(false)
     }
@@ -64,19 +68,18 @@ export function NameGate({ onReady }: NameGateProps) {
   if (created) {
     return (
       <div class="stack fade-in" style={{ marginTop: '8vh' }}>
-        <p class="kicker">Membership issued</p>
-        <h1 class="display" style={{ fontSize: 30 }}>
-          Welcome, {created.name}.
+        <h1 class="display" style={{ fontSize: 28 }}>
+          You're in, {created.name}.
         </h1>
         <div class="panel stack">
           <p class="muted" style={{ margin: 0 }}>
-            Your claim code restores your name and rating if this device forgets you.
-            Screenshot it.
+            This backup code restores your name and rating if you switch phones or Safari
+            forgets you. Screenshot it.
           </p>
           <div class="code-chip">{created.claimCode}</div>
         </div>
         <button class="btn btn-primary" onClick={() => onReady(created)}>
-          Enter the lounge
+          Let's play
         </button>
       </div>
     )
@@ -84,14 +87,11 @@ export function NameGate({ onReady }: NameGateProps) {
 
   return (
     <div class="stack fade-in" style={{ marginTop: '8vh' }}>
-      <p class="kicker">Members only</p>
-      <h1 class="wordmark">
+      <h1 class="wordmark" style={{ fontSize: 44 }}>
         Word Hunt
         <em>Lounge</em>
       </h1>
-      <p class="muted">
-        One board, all your friends, ranked results. Take a seat.
-      </p>
+      <p class="muted">One board, the whole group chat. Highest score wins.</p>
 
       <div class="seg">
         <button class={mode === 'new' ? 'on' : ''} onClick={() => setMode('new')}>
@@ -113,25 +113,33 @@ export function NameGate({ onReady }: NameGateProps) {
             onKeyDown={(e) => e.key === 'Enter' && join()}
           />
           <button class="btn btn-primary" disabled={busy || name.trim().length === 0} onClick={join}>
-            Take a seat
+            Let's go
           </button>
         </div>
       ) : (
         <div class="stack">
           <input
             class="input"
-            placeholder="Claim code"
+            placeholder="Backup code"
             autocapitalize="characters"
             value={claimCode}
             onInput={(e) => setClaimCode((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => e.key === 'Enter' && claim()}
           />
-          <button class="btn btn-primary" disabled={busy || claimCode.trim().length === 0} onClick={claim}>
-            Restore membership
+          <button
+            class="btn btn-primary"
+            disabled={busy || claimCode.trim().length === 0}
+            onClick={claim}
+          >
+            Restore my stats
           </button>
         </div>
       )}
-      {error && <p class="muted" style={{ color: 'var(--danger)' }}>{error}</p>}
+      {error && (
+        <p class="muted" style={{ color: 'var(--danger)' }}>
+          {error}
+        </p>
+      )}
     </div>
   )
 }

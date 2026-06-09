@@ -99,7 +99,7 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
       })
       navigate(`/l/${next.code}`)
     } catch {
-      showToast('Could not deal a rematch')
+      showToast('Could not create a rematch')
       setBusy(false)
     }
   }
@@ -108,11 +108,11 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
     return (
       <div class="stack fade-in" style={{ marginTop: '14vh', textAlign: 'center' }}>
         <h2 class="display" style={{ fontSize: 26 }}>
-          No such table.
+          Board not found.
         </h2>
-        <p class="muted">This board doesn't exist — check the link.</p>
+        <p class="muted">Check the link — this board doesn't exist.</p>
         <button class="btn btn-ghost" onClick={() => navigate('/')}>
-          Back to the lounge
+          Back home
         </button>
       </div>
     )
@@ -135,7 +135,7 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
     <div class="stack fade-in">
       <header class="row space" style={{ marginTop: 6 }}>
         <button class="btn btn-ghost btn-small" onClick={() => navigate('/')}>
-          ← Lounge
+          ← Home
         </button>
         <div class="row" style={{ gap: 8 }}>
           {modeBadge(lounge.mode)}
@@ -148,7 +148,7 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
       <div class="panel stack">
         <div>
           <p class="kicker" style={{ margin: 0 }}>
-            {lounge.createdByName ? `${lounge.createdByName}'s table` : 'Open table'}
+            {lounge.createdByName ? `${lounge.createdByName}'s board` : 'Word Hunt'}
           </p>
           <h2 class="display" style={{ fontSize: 26, marginTop: 6 }}>
             {lounge.status === 'finalized'
@@ -162,8 +162,8 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
             {lounge.status === 'finalized'
               ? ' · settled'
               : deadlineMs !== null
-                ? ` · locks in ${fmtCountdown(deadlineMs)}`
-                : ' · open table'}
+                ? ` · ends in ${fmtCountdown(deadlineMs)}`
+                : ''}
             {playedCount > 0 && ` · ${playedCount} played`}
           </p>
         </div>
@@ -171,22 +171,22 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
         {you && !you.played && lounge.status === 'open' && (
           <button class="btn btn-primary" disabled={busy || !you.canPlay} onClick={play}>
             {busy
-              ? 'Shuffling…'
+              ? 'Starting…'
               : you.canPlay
-                ? `Play this board — ${lounge.durationS}s`
+                ? `Play — ${lounge.durationS} seconds`
                 : you.reason === 'not_enough_time'
                   ? 'Too close to the deadline'
                   : 'Board closed'}
           </button>
         )}
         <button class="btn btn-ghost" onClick={share}>
-          Share to the group chat
+          Share to group chat
         </button>
       </div>
 
       {lounge.rematchCode && (
         <div class="panel row space fade-in">
-          <span class="muted">A rematch was dealt →</span>
+          <span class="muted">Rematch started →</span>
           <button class="btn btn-ghost btn-small" onClick={() => navigate(`/l/${lounge.rematchCode}`)}>
             Join {lounge.rematchCode}
           </button>
@@ -201,7 +201,6 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
               <div
                 key={p.playerId}
                 class={`standing${p.playerId === identity.id ? ' me' : ''}`}
-                style={{ animationDelay: `${i * 45}ms` }}
               >
                 <div class={`rank-chip${p.state === 'done' ? ` r${i + 1}` : ''}`}>
                   {p.state === 'done' ? i + 1 : '·'}
@@ -267,7 +266,7 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
                   ))}
                   {(results.words![s.playerId] ?? []).length === 0 && (
                     <p class="muted" style={{ margin: '4px 0' }}>
-                      Not a single word. Rough night.
+                      No words found.
                     </p>
                   )}
                 </div>
@@ -279,7 +278,7 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
 
       {(you?.played || lounge.status === 'finalized') && !lounge.rematchCode && (
         <button class="btn btn-primary" disabled={busy} onClick={rematch}>
-          {busy ? 'Dealing…' : 'Rematch — new board'}
+          {busy ? 'Creating…' : 'Rematch — new board'}
         </button>
       )}
       {toast}
