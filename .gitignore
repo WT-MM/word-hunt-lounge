@@ -1,0 +1,9 @@
+node_modules/
+dist/
+# the global gitignore excludes *.sql — the D1 schema must ship with the repo
+!migrations/*.sql
+.wrangler/
+public/dict/trie.bin
+.dev.vars
+.env*
+.DS_Store

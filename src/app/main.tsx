@@ -1,0 +1,44 @@
+import { render } from 'preact'
+import { useCallback, useEffect, useState } from 'preact/hooks'
+import './styles.css'
+import { type Identity, loadIdentity } from './identity'
+import { NameGate } from './components/NameGate'
+import { Home } from './screens/Home'
+import { Lounge } from './screens/Lounge'
+
+function App() {
+  const [path, setPath] = useState(location.pathname)
+  const [identity, setIdentity] = useState<Identity | null>(loadIdentity())
+
+  useEffect(() => {
+    const onPop = () => setPath(location.pathname)
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  const navigate = useCallback((to: string) => {
+    history.pushState(null, '', to)
+    setPath(to)
+    window.scrollTo(0, 0)
+  }, [])
+
+  if (!identity) {
+    return <NameGate onReady={setIdentity} />
+  }
+
+  const loungeMatch = path.match(/^\/l\/([A-Za-z0-9-]+)/)
+  if (loungeMatch) {
+    return (
+      <Lounge
+        // key forces a clean remount when hopping lounge → rematch lounge
+        key={loungeMatch[1]}
+        code={loungeMatch[1].toUpperCase()}
+        identity={identity}
+        navigate={navigate}
+      />
+    )
+  }
+  return <Home navigate={navigate} onIdentityLost={() => setIdentity(null)} />
+}
+
+render(<App />, document.getElementById('app')!)

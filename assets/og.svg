@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="felt" cx="50%" cy="0%" r="120%">
+      <stop offset="0" stop-color="#143527"/>
+      <stop offset="0.7" stop-color="#0b1d17"/>
+      <stop offset="1" stop-color="#06120d"/>
+    </radialGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbf5e6"/>
+      <stop offset="1" stop-color="#e7d9ba"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eccd84"/>
+      <stop offset="1" stop-color="#c9a35a"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#felt)"/>
+  <rect x="24" y="24" width="1152" height="582" rx="26" fill="none" stroke="#c9a35a" stroke-opacity="0.35" stroke-width="2"/>
+  <rect x="34" y="34" width="1132" height="562" rx="20" fill="none" stroke="#c9a35a" stroke-opacity="0.15" stroke-width="1"/>
+
+  <!-- tiles spelling PLAY with a trace line -->
+  <g transform="translate(170, 150)">
+    <polyline points="65,210 215,140 365,210 515,140" fill="none" stroke="url(#brass)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+    <g transform="translate(0,145)">
+      <rect x="0" y="6" width="130" height="130" rx="24" fill="#a8946b"/>
+      <rect width="130" height="130" rx="24" fill="url(#tile)"/>
+      <text x="65" y="92" text-anchor="middle" font-family="Georgia, serif" font-weight="900" font-size="78" fill="#292113">P</text>
+    </g>
+    <g transform="translate(150,75)">
+      <rect x="0" y="6" width="130" height="130" rx="24" fill="#a8946b"/>
+      <rect width="130" height="130" rx="24" fill="url(#tile)"/>
+      <text x="65" y="92" text-anchor="middle" font-family="Georgia, serif" font-weight="900" font-size="78" fill="#292113">L</text>
+    </g>
+    <g transform="translate(300,145)">
+      <rect x="0" y="6" width="130" height="130" rx="24" fill="#a8946b"/>
+      <rect width="130" height="130" rx="24" fill="url(#tile)"/>
+      <text x="65" y="92" text-anchor="middle" font-family="Georgia, serif" font-weight="900" font-size="78" fill="#292113">A</text>
+    </g>
+    <g transform="translate(450,75)">
+      <rect x="0" y="6" width="130" height="130" rx="24" fill="#a8946b"/>
+      <rect width="130" height="130" rx="24" fill="url(#tile)"/>
+      <text x="65" y="92" text-anchor="middle" font-family="Georgia, serif" font-weight="900" font-size="78" fill="#292113">Y</text>
+    </g>
+  </g>
+
+  <!-- wordmark -->
+  <g transform="translate(820, 240)">
+    <text x="0" y="0" font-family="Georgia, serif" font-weight="700" font-size="64" fill="#f4ecda">Word</text>
+    <text x="0" y="64" font-family="Georgia, serif" font-weight="700" font-size="64" fill="#f4ecda">Hunt</text>
+    <text x="0" y="132" font-family="Georgia, serif" font-style="italic" font-size="60" fill="#eccd84">Lounge</text>
+  </g>
+
+  <text x="600" y="560" text-anchor="middle" font-family="Courier New, monospace" font-size="26" letter-spacing="8" fill="#c9a35a">ONE BOARD · ALL YOUR FRIENDS · 80 SECONDS</text>
+</svg>

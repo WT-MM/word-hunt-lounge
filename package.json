@@ -1,0 +1,35 @@
+{
+  "name": "word-hunt-lounge",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build:dict": "tsx scripts/build-dict.ts",
+    "predev": "tsx scripts/build-dict.ts",
+    "dev": "vite dev",
+    "prebuild": "tsx scripts/build-dict.ts",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply word-hunt-lounge --local",
+    "db:migrate:remote": "wrangler d1 migrations apply word-hunt-lounge --remote",
+    "deploy": "npm run build && wrangler deploy",
+    "smoke": "tsx scripts/smoke.ts"
+  },
+  "dependencies": {
+    "hono": "^4",
+    "preact": "^10"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1",
+    "@cloudflare/workers-types": "^4.20260609.1",
+    "@preact/preset-vite": "^2",
+    "@types/node": "^25.9.2",
+    "puppeteer-core": "^25.1.0",
+    "tsx": "^4",
+    "typescript": "^5",
+    "vite": "^6",
+    "vitest": "^3",
+    "wrangler": "^4"
+  }
+}

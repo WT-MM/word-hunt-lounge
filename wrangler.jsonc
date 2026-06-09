@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "word-hunt-lounge",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-01-01",
+  "assets": {
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/l/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "word-hunt-lounge",
+      // Local dev (vite dev / wrangler dev) ignores this and uses .wrangler/state.
+      "database_id": "cdf16169-aa93-4fef-b9ac-de0fcb91a91b",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "observability": { "enabled": true }
+}
