@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { isAdjacent } from '../../shared/path'
+import { hapticTick } from '../haptics'
 
 export interface Flash {
   path: number[]
@@ -115,15 +116,21 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     trackFinger(e)
-    apply(extend(tileAt(e.clientX, e.clientY), []))
+    const first = extend(tileAt(e.clientX, e.clientY), [])
+    if (first.length > 0) hapticTick()
+    apply(first)
   }
 
   const onPointerMove = (e: PointerEvent) => {
     if (!tracing.current) return
     trackFinger(e)
     const next = extend(tileAt(e.clientX, e.clientY), pathRef.current)
-    if (next !== pathRef.current) apply(next)
-    else scheduleRedraw()
+    if (next !== pathRef.current) {
+      hapticTick() // per tile joined (or popped on backtrack), like the original
+      apply(next)
+    } else {
+      scheduleRedraw()
+    }
   }
 
   const endTrace = (submit: boolean) => {

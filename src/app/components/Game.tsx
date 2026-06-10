@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { wordFromPath } from '../../shared/path'
 import { MIN_WORD_LENGTH, wordScore } from '../../shared/score'
 import { type RoundSession, api } from '../api'
+import { hapticSuccess } from '../haptics'
 import { Board, type Flash } from './Board'
 
 interface GameProps {
@@ -89,6 +90,7 @@ export function Game({ code, session, onDone }: GameProps) {
     setTimeout(() => setVerdictWord((v) => (v?.word === word ? null : v)), 800)
 
     if (kind === 'valid') {
+      hapticSuccess()
       const score = wordScore(word.length)
       foundWords.current.add(word)
       setFound((prev) => [{ word, score }, ...prev])
