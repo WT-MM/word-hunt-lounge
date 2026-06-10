@@ -1,0 +1,23 @@
+# xcodegen spec — run `xcodegen` in this directory to produce the .xcodeproj
+name: WordHuntLounge
+options:
+  bundleIdPrefix: tech.somana
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  WordHuntLounge:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: Word Hunt
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_KEY_UIUserInterfaceStyle: Dark

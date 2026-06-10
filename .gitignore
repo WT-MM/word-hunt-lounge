@@ -7,3 +7,4 @@ public/dict/trie.bin
 .dev.vars
 .env*
 .DS_Store
+ios/WordHuntLounge.xcodeproj/
