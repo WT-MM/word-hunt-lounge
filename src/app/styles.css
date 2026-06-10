@@ -7,7 +7,8 @@
 :root {
   --green-hi: #1f9159;
   --green-lo: #0e5e38;
-  --green-banner: rgba(0, 0, 0, 0.28);
+  --green-banner: #0f5435;       /* opaque slab surface */
+  --surface-edge: #093d26;       /* hard bottom edge under slabs */
   --green-edge: rgba(255, 255, 255, 0.14);
 
   --tile-face: #f3dfa6;
@@ -133,6 +134,7 @@ body {
   background: var(--green-banner);
   border-radius: var(--radius);
   padding: 16px;
+  box-shadow: 0 3px 0 var(--surface-edge);
 }
 
 .stack {
@@ -199,10 +201,12 @@ body {
 .btn-ghost {
   color: var(--text);
   background: var(--green-banner);
+  box-shadow: 0 3px 0 var(--surface-edge);
 }
 
 .btn-ghost:active:not(:disabled) {
-  background: rgba(0, 0, 0, 0.4);
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--surface-edge);
 }
 
 .btn-small {
@@ -219,7 +223,7 @@ body {
   font-size: 17px;
   font-weight: 800;
   color: var(--text);
-  background: rgba(0, 0, 0, 0.25);
+  background: #0c4a2e;
   border: 2px solid transparent;
   border-radius: 13px;
   padding: 14px;
@@ -243,7 +247,7 @@ body {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  background: rgba(0, 0, 0, 0.25);
+  background: #0c4a2e;
   border-radius: 13px;
   padding: 4px;
   gap: 4px;
@@ -355,7 +359,7 @@ body {
   font-weight: 1000;
   font-size: 14px;
   color: var(--text-dim);
-  background: rgba(0, 0, 0, 0.25);
+  background: #0c4a2e;
 }
 
 .rank-chip.r1 {
@@ -433,6 +437,7 @@ body {
   padding: 8px 16px;
   min-width: 108px;
   text-align: center;
+  box-shadow: 0 3px 0 var(--surface-edge);
 }
 
 .banner .banner-label {
@@ -665,6 +670,7 @@ details.player-words {
   background: var(--green-banner);
   border-radius: 13px;
   overflow: hidden;
+  box-shadow: 0 3px 0 var(--surface-edge);
 }
 
 details.player-words summary {
@@ -697,7 +703,7 @@ details.player-words .inner {
   letter-spacing: 0.26em;
   font-weight: 1000;
   color: var(--gold);
-  background: rgba(0, 0, 0, 0.25);
+  background: #0c4a2e;
   border-radius: 11px;
   padding: 10px 12px;
   text-align: center;

@@ -3,6 +3,7 @@ import { wordFromPath } from '../../shared/path'
 import { MIN_WORD_LENGTH, wordScore } from '../../shared/score'
 import { type RoundSession, api } from '../api'
 import { hapticSuccess } from '../haptics'
+import { setSoundEnabled, sound, soundEnabled } from '../sound'
 import { Board, type Flash } from './Board'
 
 interface GameProps {
@@ -55,6 +56,7 @@ export function Game({ code, session, onDone }: GameProps) {
   const [flash, setFlash] = useState<Flash | null>(null)
   const [verdictWord, setVerdictWord] = useState<{ word: string; kind: Flash['kind'] } | null>(null)
   const [popups, setPopups] = useState<Popup[]>([])
+  const [soundOn, setSoundOn] = useState(soundEnabled())
   const finishing = useRef(false)
   const popupId = useRef(0)
 
@@ -89,8 +91,11 @@ export function Game({ code, session, onDone }: GameProps) {
     setTimeout(() => setFlash((f) => (f?.path === path ? null : f)), 350)
     setTimeout(() => setVerdictWord((v) => (v?.word === word ? null : v)), 800)
 
+    if (kind === 'dup') sound.dup()
+    if (kind === 'invalid') sound.invalid()
     if (kind === 'valid') {
       hapticSuccess()
+      sound.success()
       const score = wordScore(word.length)
       foundWords.current.add(word)
       setFound((prev) => [{ word, score }, ...prev])
@@ -118,6 +123,16 @@ export function Game({ code, session, onDone }: GameProps) {
           <div class="banner-label">Score</div>
           <div class="banner-value">{totalScore.toLocaleString()}</div>
         </div>
+        <button
+          class="btn btn-ghost btn-small"
+          aria-label="Toggle sound"
+          onClick={() => {
+            setSoundEnabled(!soundOn)
+            setSoundOn(!soundOn)
+          }}
+        >
+          {soundOn ? '🔊' : '🔇'}
+        </button>
         <Timer endsAt={session.endsAt} onExpire={finish} />
       </div>
 

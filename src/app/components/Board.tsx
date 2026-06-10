@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { isAdjacent } from '../../shared/path'
 import { hapticTick } from '../haptics'
+import { sound, unlock } from '../sound'
 
 export interface Flash {
   path: number[]
@@ -108,6 +109,7 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
   const onPointerDown = (e: PointerEvent) => {
     if (disabled) return
     tracing.current = true
+    unlock() // AudioContext needs a user gesture; this is the earliest one
     const rect = gridRef.current?.getBoundingClientRect() ?? null
     rectRef.current = rect
     if (rect && svgRef.current) {
@@ -117,7 +119,10 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     trackFinger(e)
     const first = extend(tileAt(e.clientX, e.clientY), [])
-    if (first.length > 0) hapticTick()
+    if (first.length > 0) {
+      hapticTick()
+      sound.tick(1)
+    }
     apply(first)
   }
 
@@ -126,7 +131,9 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     trackFinger(e)
     const next = extend(tileAt(e.clientX, e.clientY), pathRef.current)
     if (next !== pathRef.current) {
-      hapticTick() // per tile joined (or popped on backtrack), like the original
+      // per tile joined (or popped on backtrack), like the original
+      hapticTick()
+      sound.tick(next.length)
       apply(next)
     } else {
       scheduleRedraw()
