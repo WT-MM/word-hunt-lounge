@@ -13,6 +13,21 @@
  * each flip the switch parks offscreen so nothing crosses accidentally.
  */
 
+/** Only iOS Safari needs (and supports) this; the native shell bridge and
+    Android's navigator.vibrate are better channels when present. */
+export function switchHapticsApplicable(): boolean {
+  try {
+    const w = window as unknown as Record<string, any>
+    if (w.webkit?.messageHandlers?.haptic) return false // native shell
+    return (
+      /iP(hone|ad|od)/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    )
+  } catch {
+    return false
+  }
+}
+
 // native rendered size of the switch control in Safari
 const SWITCH_W = 51
 const SWITCH_H = 31
@@ -33,11 +48,11 @@ export class SwitchHapticDriver {
 
   // tunables (device behavior mapped empirically via /haptics):
   /** how far ahead of the finger the flip threshold is parked */
-  leadPx = 6
+  leadPx = 12
   /** control scale at pulse time (bigger = harder to overshoot) */
   pulseScale = 1
   /** 'knob' = knob covers the host at rest; 'stretch' = whole control does */
-  restMode: 'knob' | 'stretch' = 'knob'
+  restMode: 'knob' | 'stretch' = 'stretch'
 
   constructor(host: HTMLElement) {
     this.host = host

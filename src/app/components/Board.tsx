@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { NEIGHBORS } from '../../shared/solver'
 import { hapticTick } from '../haptics'
 import { sound, unlock } from '../sound'
+import { SwitchHapticDriver, switchHapticsApplicable } from '../switch-haptics'
 
 export interface Flash {
   path: number[]
@@ -33,6 +34,7 @@ interface BoardProps {
  */
 export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps) {
   const gridRef = useRef<HTMLDivElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const lineRef = useRef<SVGPolylineElement>(null)
   const rectRef = useRef<DOMRect | null>(null)
@@ -40,9 +42,21 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
   const fingerRef = useRef<{ x: number; y: number } | null>(null)
   const rafRef = useRef(0)
   const tracing = useRef(false)
+  const driverRef = useRef<SwitchHapticDriver | null>(null)
   const [path, setPath] = useState<number[]>([])
 
   useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
+
+  // real Taptic haptics in plain iOS Safari via genuine switch crossings
+  useEffect(() => {
+    if (!wrapRef.current || !switchHapticsApplicable()) return
+    const driver = new SwitchHapticDriver(wrapRef.current)
+    driverRef.current = driver
+    return () => {
+      driver.destroy()
+      driverRef.current = null
+    }
+  }, [])
 
   const redrawLine = () => {
     rafRef.current = 0
@@ -147,7 +161,10 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
   const trackFinger = (e: PointerEvent) => {
     const rect = rectRef.current
     if (!rect) return
-    fingerRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    fingerRef.current = { x, y }
+    driverRef.current?.track(x, y)
   }
 
   const onPointerDown = (e: PointerEvent) => {
@@ -161,6 +178,8 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
       lineRef.current?.setAttribute('stroke-width', String(rect.width * 0.058))
     }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    const rect2 = rectRef.current
+    if (rect2) driverRef.current?.begin(e.clientX - rect2.left, e.clientY - rect2.top)
     trackFinger(e)
     const first = pickPath(e.clientX, e.clientY, [])
     if (first.length > 0) {
@@ -177,6 +196,7 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     if (next !== pathRef.current) {
       // per tile joined (or popped on backtrack), like the original
       hapticTick()
+      driverRef.current?.pulse()
       sound.tick(next.length)
       apply(next)
     } else {
@@ -188,6 +208,7 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     if (!tracing.current) return
     tracing.current = false
     fingerRef.current = null
+    driverRef.current?.end()
     const final = pathRef.current
     apply([])
     if (submit && final.length >= 2) onSubmit(final)
@@ -198,6 +219,7 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
   return (
     <div
       class="board-wrap"
+      ref={wrapRef}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={() => endTrace(true)}

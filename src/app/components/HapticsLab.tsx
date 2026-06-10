@@ -24,9 +24,9 @@ function TraceStrip({ note }: { note: (msg: string) => void }) {
   const [flips, setFlips] = useState(0)
   const [showOverlay, setShowOverlay] = useState(false)
   const [capture, setCapture] = useState(true)
-  const [lead, setLead] = useState(6)
+  const [lead, setLead] = useState(12)
   const [scale, setScale] = useState(1)
-  const [restMode, setRestMode] = useState<'knob' | 'stretch'>('knob')
+  const [restMode, setRestMode] = useState<'knob' | 'stretch'>('stretch')
 
   useEffect(() => {
     if (!hostRef.current) return
@@ -148,7 +148,7 @@ function TraceStrip({ note }: { note: (msg: string) => void }) {
           <span class="muted" style={{ width: 52 }}>
             scale
           </span>
-          {[1, 1.75, 2.5].map((v) => (
+          {[0.4, 0.7, 1, 1.75, 2.5].map((v) => (
             <button
               key={v}
               class="btn btn-ghost btn-small"
