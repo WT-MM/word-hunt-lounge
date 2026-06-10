@@ -2,6 +2,7 @@ import { render } from 'preact'
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import '@fontsource-variable/nunito'
 import './styles.css'
+import { installZoomGuards } from './zoom-guard'
 import { type Identity, loadIdentity } from './identity'
 import { NameGate } from './components/NameGate'
 import { HapticsLab } from './components/HapticsLab'
@@ -57,4 +58,5 @@ function App() {
   return <Home navigate={navigate} onIdentityLost={() => setIdentity(null)} />
 }
 
+installZoomGuards()
 render(<App />, document.getElementById('app')!)
