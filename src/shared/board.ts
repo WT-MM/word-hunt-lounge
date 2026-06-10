@@ -1,12 +1,16 @@
 import { mulberry32 } from './rng'
 import { solveBoard } from './solver'
 
-/** The 16 standard (modern) Boggle dice. The 'q' face becomes a 'qu' tile. */
+/**
+ * The 16 standard (modern) Boggle dice, with one change: like GamePigeon's
+ * Word Hunt, there is no Q — the classic 'himnqu' die swaps its q for an o.
+ * (The solver still supports multi-letter tiles for any old boards.)
+ */
 export const DICE = [
   'aaeegn', 'abbjoo', 'achops', 'affkps',
   'aoottw', 'cimotu', 'deilrx', 'delrvy',
   'distty', 'eeghnw', 'eeinsu', 'ehrtvw',
-  'eiosst', 'elrtty', 'himnqu', 'hlnnrz',
+  'eiosst', 'elrtty', 'himnou', 'hlnnrz',
 ]
 
 export function rollBoard(seed: number): string[] {
@@ -16,10 +20,7 @@ export function rollBoard(seed: number): string[] {
     const j = Math.floor(rnd() * (i + 1))
     ;[dice[i], dice[j]] = [dice[j], dice[i]]
   }
-  return dice.map((die) => {
-    const face = die[Math.floor(rnd() * die.length)]
-    return face === 'q' ? 'qu' : face
-  })
+  return dice.map((die) => die[Math.floor(rnd() * die.length)])
 }
 
 export interface GeneratedBoard {

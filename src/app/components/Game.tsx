@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { wordFromPath } from '../../shared/path'
+import { MIN_WORD_LENGTH, wordScore } from '../../shared/score'
 import { type RoundSession, api } from '../api'
 import { Board, type Flash } from './Board'
 
@@ -56,6 +57,12 @@ export function Game({ code, session, onDone }: GameProps) {
   const finishing = useRef(false)
   const popupId = useRef(0)
 
+  // verdicts are computed locally against the shipped solution set, so
+  // feedback is instant; the server still validates every submission and
+  // remains authoritative for the recorded score
+  const solutions = useMemo(() => new Set(session.words), [session.words])
+  const foundWords = useRef(new Set(session.found.map((f) => f.word)))
+
   const finish = async () => {
     if (finishing.current) return
     finishing.current = true
@@ -67,26 +74,30 @@ export function Game({ code, session, onDone }: GameProps) {
     onDone()
   }
 
-  const submit = async (path: number[]) => {
+  const submit = (path: number[]) => {
     const word = wordFromPath(session.board, path)
-    try {
-      const res = await api.submitWord(code, path)
-      if (res.verdict === 'too_late') return
-      const kind: Flash['kind'] =
-        res.verdict === 'valid' ? 'valid' : res.verdict === 'dup' ? 'dup' : 'invalid'
-      setFlash({ path, kind, key: Date.now() })
-      setVerdictWord({ word, kind })
-      setTimeout(() => setFlash((f) => (f?.path === path ? null : f)), 350)
-      setTimeout(() => setVerdictWord((v) => (v?.word === word ? null : v)), 800)
-      if (res.verdict === 'valid' && res.word && res.score) {
-        setFound((prev) => [{ word: res.word!, score: res.score! }, ...prev])
-        setTotalScore((prev) => Math.max(prev, res.totalScore))
-        const id = ++popupId.current
-        setPopups((prev) => [...prev, { id, text: `+${res.score}` }])
-        setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 900)
-      }
-    } catch {
-      /* network hiccup — the word is simply lost; the round continues */
+    const kind: Flash['kind'] =
+      word.length >= MIN_WORD_LENGTH && solutions.has(word)
+        ? foundWords.current.has(word)
+          ? 'dup'
+          : 'valid'
+        : 'invalid'
+
+    setFlash({ path, kind, key: Date.now() })
+    setVerdictWord({ word, kind })
+    setTimeout(() => setFlash((f) => (f?.path === path ? null : f)), 350)
+    setTimeout(() => setVerdictWord((v) => (v?.word === word ? null : v)), 800)
+
+    if (kind === 'valid') {
+      const score = wordScore(word.length)
+      foundWords.current.add(word)
+      setFound((prev) => [{ word, score }, ...prev])
+      setTotalScore((prev) => prev + score)
+      const id = ++popupId.current
+      setPopups((prev) => [...prev, { id, text: `+${score}` }])
+      setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 900)
+      // record in the background; the UI never waits on the network
+      api.submitWord(code, path).catch(() => undefined)
     }
   }
 

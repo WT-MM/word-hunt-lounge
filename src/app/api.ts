@@ -68,6 +68,8 @@ export interface LoungePlayer {
 
 export interface RoundSession {
   board: string[]
+  /** all solution words on this board — verdicts are computed locally */
+  words: string[]
   startedAt: number
   endsAt: number
   found: Array<{ word: string; score: number }>

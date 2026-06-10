@@ -156,6 +156,11 @@ async function main() {
   const adaRound = await api(`/api/lounges/${code1}/rounds`, { method: 'POST', body: {}, auth: ada })
   check(adaRound.status === 201 && adaRound.json.board?.length === 16, 'round starts with board', adaRound)
   const tiles: string[] = adaRound.json.board
+  check(
+    Array.isArray(adaRound.json.words) && adaRound.json.words.length === created.json.wordCount,
+    'solutions ship with round start',
+    adaRound.json.words?.length,
+  )
   const words = playableWords(tiles)
   check(words.length >= 3, 'enough playable words for the test', words.length)
   const solutionSet = new Set(solveBoard(tiles, trie).keys())

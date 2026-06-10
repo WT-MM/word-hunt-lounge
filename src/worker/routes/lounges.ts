@@ -53,6 +53,19 @@ async function loungeRounds(env: Env, loungeId: string): Promise<LoungeRoundRow[
   return results
 }
 
+/**
+ * The board's solution words ship to the client at round start so word
+ * verdicts are instant (no per-word network wait, like the original). The
+ * server stays authoritative: submissions are still path-validated, checked
+ * against this same set, and time-windowed.
+ */
+async function solutionWords(env: Env, loungeId: string): Promise<string[]> {
+  const row = await env.DB.prepare('SELECT solutions FROM lounges WHERE id = ?')
+    .bind(loungeId)
+    .first<{ solutions: string }>()
+  return row ? Object.keys(JSON.parse(row.solutions) as Record<string, number>) : []
+}
+
 async function loungeDeltas(env: Env, lounge: LoungeRow): Promise<Map<string, number>> {
   if (lounge.status !== 'finalized') return new Map()
   const { results } = await env.DB.prepare(
@@ -104,6 +117,7 @@ async function viewerState(
       .all<{ word: string; score: number }>()
     state.resume = {
       board: boardTiles(lounge),
+      words: await solutionWords(env, lounge.id),
       startedAt: mine.started_at,
       endsAt: roundEndsAt(mine),
       found,
@@ -263,6 +277,7 @@ lounges.post('/api/lounges/:code/rounds', requireAuth, async (c) => {
   return c.json(
     {
       board: boardTiles(lounge),
+      words: await solutionWords(c.env, lounge.id),
       startedAt: now,
       endsAt: now + lounge.duration_s * 1000,
       found: [],
@@ -286,6 +301,7 @@ async function resumeOrConflict(
     .all<{ word: string; score: number }>()
   return c.json({
     board: boardTiles(lounge),
+    words: await solutionWords(c.env, lounge.id),
     startedAt: round.started_at,
     endsAt: roundEndsAt(round),
     found,
