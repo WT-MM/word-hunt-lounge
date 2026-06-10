@@ -17,6 +17,7 @@
     "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
+    "@fontsource-variable/nunito": "^5.2.7",
     "hono": "^4",
     "preact": "^10"
   },

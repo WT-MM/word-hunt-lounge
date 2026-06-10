@@ -27,12 +27,15 @@
   --gold: #ffd766;
   --danger: #ff6f57;
 
-  --font: 'Nunito', -apple-system, 'Helvetica Neue', sans-serif;
+  --font: 'Nunito Variable', 'Nunito', -apple-system, 'Helvetica Neue', sans-serif;
   --radius: 16px;
 }
 
 * {
   box-sizing: border-box;
+  /* iOS ignores user-scalable=no, so without this every tap waits ~300ms
+     for a possible double-tap zoom. The board overrides with `none`. */
+  touch-action: manipulation;
 }
 
 html,
@@ -49,8 +52,9 @@ body {
   font-family: var(--font);
   font-weight: 700;
   color: var(--text);
+  /* plain in-flow gradient — background-attachment:fixed forces full-page
+     repaints on every scroll frame in iOS Safari */
   background: linear-gradient(180deg, var(--green-hi), var(--green-lo) 85%);
-  background-attachment: fixed;
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   user-select: none;
@@ -511,10 +515,14 @@ body {
   }
 }
 
+.board-wrap,
+.board-wrap * {
+  touch-action: none; /* without this iOS fires pointercancel and kills traces */
+}
+
 .board-wrap {
   width: 100%;
   aspect-ratio: 1;
-  touch-action: none; /* without this iOS fires pointercancel and kills traces */
 }
 
 .board-grid {

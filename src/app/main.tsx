@@ -1,5 +1,6 @@
 import { render } from 'preact'
 import { useCallback, useEffect, useState } from 'preact/hooks'
+import '@fontsource-variable/nunito'
 import './styles.css'
 import { type Identity, loadIdentity } from './identity'
 import { NameGate } from './components/NameGate'
