@@ -1,92 +1,161 @@
-import { useState } from 'preact/hooks'
+import { useRef, useState } from 'preact/hooks'
 
 /**
- * Hidden device-test page (/haptics) to isolate why iOS haptics may be
- * silent: device setting vs. the programmatic trick being patched.
+ * /haptics — device experiments for the one unexplored haptics path on
+ * iOS 26.5+: programmatic switch clicks are patched, but GENUINE knob-drag
+ * interaction still buzzes. If a real touch that starts on a switch keeps
+ * driving it (UISwitch semantics), and CSS transforms applied mid-gesture
+ * retarget the flip threshold, we can fire haptics on demand during a trace.
+ * Tests T1–T4 isolate each unknown.
  */
-export function HapticsLab() {
-  const [log, setLog] = useState<string[]>([])
-  const note = (msg: string) => setLog((l) => [`${new Date().toLocaleTimeString()} ${msg}`, ...l].slice(0, 8))
 
-  const labelInHead = () => {
-    const label = document.createElement('label')
-    const input = document.createElement('input')
-    input.type = 'checkbox'
-    input.setAttribute('switch', '')
-    label.appendChild(input)
-    document.head.appendChild(label)
-    label.click()
-    document.head.removeChild(label)
-    note('A: label-in-head click fired')
+function applySwitchAttr(el: HTMLInputElement | null) {
+  el?.setAttribute('switch', '')
+}
+
+interface FlipTestProps {
+  id: string
+  title: string
+  instructions: string
+  opacity?: number
+  touchAction?: string
+  note: (msg: string) => void
+}
+
+/**
+ * Press-and-hold area containing a scaled switch. While held, we oscillate
+ * the switch's translateX every 550ms so its flip threshold passes under
+ * the (stationary) finger. Native `change` events are logged — they prove
+ * the mechanism engages even if the buzz is absent.
+ */
+function FlipTest({ id, title, instructions, opacity = 1, touchAction = 'pan-y', note }: FlipTestProps) {
+  const switchRef = useRef<HTMLInputElement>(null)
+  const timer = useRef<ReturnType<typeof setInterval>>()
+  const side = useRef(false)
+  const [flips, setFlips] = useState(0)
+  const [changes, setChanges] = useState(0)
+
+  const start = () => {
+    note(`${id}: hold started, oscillating transform`)
+    clearInterval(timer.current)
+    timer.current = setInterval(() => {
+      side.current = !side.current
+      if (switchRef.current) {
+        switchRef.current.style.transform = `translateX(${side.current ? 70 : -70}px) scale(3)`
+      }
+      setFlips((f) => f + 1)
+    }, 550)
   }
 
-  const inputInBody = () => {
-    const input = document.createElement('input')
-    input.type = 'checkbox'
-    input.setAttribute('switch', '')
-    document.body.appendChild(input)
-    input.click()
-    input.remove()
-    note('B: input-in-body click fired')
-  }
-
-  const burst = () => {
-    note('C: burst of 6 started')
-    let n = 0
-    const id = setInterval(() => {
-      labelInHead()
-      if (++n >= 6) clearInterval(id)
-    }, 180)
-  }
-
-  const vibrate = () => {
-    const supported = 'vibrate' in navigator
-    if (supported) navigator.vibrate(30)
-    note(`D: navigator.vibrate ${supported ? 'called' : 'NOT SUPPORTED'}`)
+  const stop = () => {
+    clearInterval(timer.current)
+    timer.current = undefined
   }
 
   return (
-    <div class="stack fade-in">
+    <div class="panel stack">
+      <p class="kicker" style={{ margin: 0 }}>
+        {id} · {title}
+      </p>
+      <p class="muted" style={{ margin: 0 }}>
+        {instructions}
+      </p>
+      <div
+        onPointerDown={start}
+        onPointerUp={stop}
+        onPointerCancel={stop}
+        onPointerLeave={stop}
+        style={{
+          height: 110,
+          display: 'grid',
+          placeItems: 'center',
+          background: 'rgba(0,0,0,0.18)',
+          borderRadius: 12,
+          touchAction,
+        }}
+      >
+        <input
+          ref={(el) => {
+            applySwitchAttr(el)
+            ;(switchRef as { current: HTMLInputElement | null }).current = el
+          }}
+          type="checkbox"
+          onChange={() => {
+            setChanges((c) => c + 1)
+            note(`${id}: NATIVE VALUE FLIP (change event)`)
+          }}
+          style={{ transform: 'scale(3)', opacity }}
+        />
+      </div>
+      <p class="muted" style={{ margin: 0 }}>
+        transform flips: {flips} · native value flips: <b style={{ color: 'var(--gold)' }}>{changes}</b>
+      </p>
+    </div>
+  )
+}
+
+export function HapticsLab() {
+  const [log, setLog] = useState<string[]>([])
+  const note = (msg: string) =>
+    setLog((l) => [`${new Date().toLocaleTimeString()} ${msg}`, ...l].slice(0, 10))
+
+  return (
+    <div class="stack fade-in" style={{ paddingBottom: 40 }}>
       <h2 class="display" style={{ fontSize: 24, marginTop: 8 }}>
-        Haptics test
+        Haptics lab v2
       </h2>
+      <p class="muted">
+        Goal: fire real haptics during a trace by retargeting a genuine knob-drag.
+        Run T1 first, then T2–T4. Report buzzes + the gold counters.
+      </p>
+
       <div class="panel stack">
-        <p class="muted" style={{ margin: 0 }}>
-          1 — Flick this real switch with your finger. If even this doesn't buzz, the
-          device isn't producing system haptics at all (check Settings → Sounds &amp;
-          Haptics → System Haptics, and Low Power Mode).
+        <p class="kicker" style={{ margin: 0 }}>
+          T1 · knob drag baseline
         </p>
-        <div style={{ fontSize: 28 }}>
-          {/* `switch` must land as a DOM ATTRIBUTE: Safari also exposes it as
-              a property, so a falsy JSX value silently renders a checkbox */}
+        <p class="muted" style={{ margin: 0 }}>
+          Put your finger ON the knob, drag slowly right, then left, then right —
+          WITHOUT lifting. (a) Does the knob follow your finger? (b) Do you feel a
+          buzz EACH time it flips, or only on the first/none? Then lift, and retry
+          starting your drag from the empty (track) end instead of the knob.
+        </p>
+        <div style={{ display: 'grid', placeItems: 'center', height: 90, touchAction: 'pan-y' }}>
           <input
+            ref={applySwitchAttr}
             type="checkbox"
-            ref={(el) => el?.setAttribute('switch', '')}
-            style={{ width: 52, height: 32 }}
+            onChange={() => note('T1: NATIVE VALUE FLIP')}
+            style={{ transform: 'scale(2.6)' }}
           />
         </div>
       </div>
-      <div class="panel stack">
-        <p class="muted" style={{ margin: 0 }}>
-          2 — Then try each button. Tell me which (if any) buzz.
-        </p>
-        <button class="btn btn-primary" onClick={labelInHead}>
-          A · label in &lt;head&gt; (current method)
-        </button>
-        <button class="btn btn-primary" onClick={inputInBody}>
-          B · bare input in &lt;body&gt;
-        </button>
-        <button class="btn btn-primary" onClick={burst}>
-          C · burst ×6 (no tap context)
-        </button>
-        <button class="btn btn-primary" onClick={vibrate}>
-          D · navigator.vibrate
-        </button>
-      </div>
+
+      <FlipTest
+        id="T2"
+        title="auto-flip under a still finger (the mechanism)"
+        instructions="Press and HOLD your finger on the switch and keep it perfectly still. We slide the switch back and forth beneath it. Do you feel buzzes while holding? Watch the gold counter."
+        note={note}
+      />
+
+      <FlipTest
+        id="T3"
+        title="same, but nearly invisible"
+        instructions="Same hold-still test with the switch at 5% opacity — checks whether hiding it kills the haptic."
+        opacity={0.05}
+        note={note}
+      />
+
+      <FlipTest
+        id="T4"
+        title="same, under touch-action: none"
+        instructions="Same hold-still test inside a touch-action:none container (what the game board uses). If T2 buzzes but T4 doesn't, the board needs a different touch-action strategy."
+        touchAction="none"
+        note={note}
+      />
+
       <div class="panel">
         <p class="kicker">Log</p>
         {log.length === 0 ? (
-          <p class="muted">No taps yet.</p>
+          <p class="muted">No events yet.</p>
         ) : (
           log.map((l) => (
             <p key={l} class="muted" style={{ margin: '2px 0' }}>
