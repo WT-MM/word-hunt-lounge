@@ -1,49 +1,45 @@
 /**
  * Best-effort haptics:
- * - Android Chrome: navigator.vibrate
- * - iOS Safari has no vibration API, but programmatically toggling an
- *   <input type="checkbox" switch> (iOS 17.4+) fires the system toggle
- *   haptic — the standard workaround. Only works from within a
- *   user-gesture handler, which is where we call it (pointer events).
+ * - iOS Safari has no vibration API. Workaround (iOS 17.4+): toggling an
+ *   <input type="checkbox" switch> fires the system toggle haptic. The
+ *   element must NOT be hidden (display:none / opacity:0 / pointer-events:
+ *   none can suppress it), so we create a fresh bare element, click it, and
+ *   remove it synchronously — it exists within one task and never paints.
+ * - Elsewhere: navigator.vibrate.
  */
-let switchInput: HTMLInputElement | null = null
+const IOS =
+  typeof navigator !== 'undefined' &&
+  (/iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
 
-function iosSwitch(): HTMLInputElement {
-  if (!switchInput) {
-    switchInput = document.createElement('input')
-    switchInput.type = 'checkbox'
-    switchInput.setAttribute('switch', '')
-    switchInput.tabIndex = -1
-    switchInput.setAttribute('aria-hidden', 'true')
-    switchInput.style.cssText =
-      'position:fixed;left:-100px;top:-100px;width:1px;height:1px;opacity:0;pointer-events:none;'
-    document.body.appendChild(switchInput)
+function iosImpulse(): void {
+  const el = document.createElement('input')
+  el.type = 'checkbox'
+  el.setAttribute('switch', '')
+  document.body.appendChild(el)
+  el.click()
+  el.remove()
+}
+
+function impulse(ms: number): void {
+  try {
+    if (IOS) {
+      iosImpulse()
+      return
+    }
+    if ('vibrate' in navigator) navigator.vibrate(ms)
+  } catch {
+    /* haptics are decorative */
   }
-  return switchInput
 }
 
 /** One light tick — fired as each tile joins the trace. */
 export function hapticTick(): void {
-  try {
-    if ('vibrate' in navigator) {
-      navigator.vibrate(10)
-      return
-    }
-    iosSwitch().click()
-  } catch {
-    /* haptics are decorative */
-  }
+  impulse(10)
 }
 
-/** Slightly stronger pattern for a scored word. */
+/** Slightly stronger double pulse for a scored word. */
 export function hapticSuccess(): void {
-  try {
-    if ('vibrate' in navigator) {
-      navigator.vibrate([12, 50, 20])
-      return
-    }
-    iosSwitch().click()
-  } catch {
-    /* haptics are decorative */
-  }
+  impulse(15)
+  setTimeout(() => impulse(20), 90)
 }
