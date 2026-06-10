@@ -1,95 +1,138 @@
-import { useRef, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
+import { SwitchHapticDriver } from '../switch-haptics'
 
 /**
- * /haptics — device experiments for the one unexplored haptics path on
- * iOS 26.5+: programmatic switch clicks are patched, but GENUINE knob-drag
- * interaction still buzzes. If a real touch that starts on a switch keeps
- * driving it (UISwitch semantics), and CSS transforms applied mid-gesture
- * retarget the flip threshold, we can fire haptics on demand during a trace.
- * Tests T1–T4 isolate each unknown.
+ * /haptics — device experiments. Current state of knowledge (on-device):
+ * knob-drag interaction buzzes on EVERY value flip within one touch and is
+ * re-evaluated when the finger MOVES (transforms under a still finger do
+ * nothing). T5 is the production-shaped prototype: invisible switch overlay
+ * owns the touch; on each cell crossing we park its flip threshold just
+ * ahead of the finger so the next movement crosses it.
  */
 
 function applySwitchAttr(el: HTMLInputElement | null) {
   el?.setAttribute('switch', '')
 }
 
-interface FlipTestProps {
-  id: string
-  title: string
-  instructions: string
-  opacity?: number
-  touchAction?: string
-  note: (msg: string) => void
-}
-
-/**
- * Press-and-hold area containing a scaled switch. While held, we oscillate
- * the switch's translateX every 550ms so its flip threshold passes under
- * the (stationary) finger. Native `change` events are logged — they prove
- * the mechanism engages even if the buzz is absent.
- */
-function FlipTest({ id, title, instructions, opacity = 1, touchAction = 'pan-y', note }: FlipTestProps) {
-  const switchRef = useRef<HTMLInputElement>(null)
-  const timer = useRef<ReturnType<typeof setInterval>>()
-  const side = useRef(false)
+function TraceStrip({ note }: { note: (msg: string) => void }) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const driverRef = useRef<SwitchHapticDriver | null>(null)
+  const rectRef = useRef<DOMRect | null>(null)
+  const cellRef = useRef(-1)
+  const tracing = useRef(false)
+  const [cells, setCells] = useState(0)
   const [flips, setFlips] = useState(0)
-  const [changes, setChanges] = useState(0)
+  const [showOverlay, setShowOverlay] = useState(false)
+  const [capture, setCapture] = useState(true)
 
-  const start = () => {
-    note(`${id}: hold started, oscillating transform`)
-    clearInterval(timer.current)
-    timer.current = setInterval(() => {
-      side.current = !side.current
-      if (switchRef.current) {
-        switchRef.current.style.transform = `translateX(${side.current ? 70 : -70}px) scale(3)`
-      }
+  useEffect(() => {
+    if (!hostRef.current) return
+    const driver = new SwitchHapticDriver(hostRef.current)
+    driver.onCross = () => {
       setFlips((f) => f + 1)
-    }, 550)
+      note('T5: NATIVE FLIP — did it buzz?')
+    }
+    driverRef.current = driver
+    return () => driver.destroy()
+  }, [])
+
+  useEffect(() => {
+    driverRef.current?.setVisible(showOverlay)
+  }, [showOverlay])
+
+  const rel = (e: PointerEvent) => {
+    const r = rectRef.current!
+    return { x: e.clientX - r.left, y: e.clientY - r.top }
   }
 
-  const stop = () => {
-    clearInterval(timer.current)
-    timer.current = undefined
+  const cellAt = (x: number) => {
+    const r = rectRef.current!
+    return Math.max(0, Math.min(3, Math.floor((x / r.width) * 4)))
+  }
+
+  const onPointerDown = (e: PointerEvent) => {
+    tracing.current = true
+    rectRef.current = hostRef.current!.getBoundingClientRect()
+    if (capture) (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    const { x, y } = rel(e)
+    driverRef.current?.begin(x, y)
+    cellRef.current = cellAt(x)
+  }
+
+  const onPointerMove = (e: PointerEvent) => {
+    if (!tracing.current) return
+    const { x, y } = rel(e)
+    driverRef.current?.track(x, y)
+    const cell = cellAt(x)
+    if (cell !== cellRef.current) {
+      cellRef.current = cell
+      setCells((n) => n + 1)
+      driverRef.current?.pulse()
+    }
+  }
+
+  const endTrace = () => {
+    if (!tracing.current) return
+    tracing.current = false
+    driverRef.current?.end()
   }
 
   return (
     <div class="panel stack">
       <p class="kicker" style={{ margin: 0 }}>
-        {id} · {title}
+        T5 · the real mechanism (production setup)
       </p>
       <p class="muted" style={{ margin: 0 }}>
-        {instructions}
+        Swipe slowly across the four tiles below, like tracing a word. Expected: a
+        buzz each time you enter a new tile. Gold counter = native flips (each
+        should buzz). Cells = tile crossings we asked haptics for.
       </p>
       <div
-        onPointerDown={start}
-        onPointerUp={stop}
-        onPointerCancel={stop}
-        onPointerLeave={stop}
+        ref={hostRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endTrace}
+        onPointerCancel={endTrace}
         style={{
-          height: 110,
+          position: 'relative',
+          overflow: 'hidden',
           display: 'grid',
-          placeItems: 'center',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 8,
+          padding: 8,
+          height: 104,
           background: 'rgba(0,0,0,0.18)',
           borderRadius: 12,
-          touchAction,
+          touchAction: 'none',
         }}
       >
-        <input
-          ref={(el) => {
-            applySwitchAttr(el)
-            ;(switchRef as { current: HTMLInputElement | null }).current = el
-          }}
-          type="checkbox"
-          onChange={() => {
-            setChanges((c) => c + 1)
-            note(`${id}: NATIVE VALUE FLIP (change event)`)
-          }}
-          style={{ transform: 'scale(3)', opacity }}
-        />
+        {['W', 'O', 'R', 'D'].map((letter) => (
+          <div key={letter} class="tile" style={{ pointerEvents: 'none' }}>
+            <span>{letter}</span>
+          </div>
+        ))}
       </div>
       <p class="muted" style={{ margin: 0 }}>
-        transform flips: {flips} · native value flips: <b style={{ color: 'var(--gold)' }}>{changes}</b>
+        cells: {cells} · native flips: <b style={{ color: 'var(--gold)' }}>{flips}</b>
       </p>
+      <div class="row" style={{ gap: 16 }}>
+        <label class="muted">
+          <input
+            type="checkbox"
+            checked={showOverlay}
+            onChange={(e) => setShowOverlay((e.target as HTMLInputElement).checked)}
+          />{' '}
+          show overlay
+        </label>
+        <label class="muted">
+          <input
+            type="checkbox"
+            checked={capture}
+            onChange={(e) => setCapture((e.target as HTMLInputElement).checked)}
+          />{' '}
+          pointer capture
+        </label>
+      </div>
     </div>
   )
 }
@@ -102,22 +145,24 @@ export function HapticsLab() {
   return (
     <div class="stack fade-in" style={{ paddingBottom: 40 }}>
       <h2 class="display" style={{ fontSize: 24, marginTop: 8 }}>
-        Haptics lab v2
+        Haptics lab v3
       </h2>
       <p class="muted">
-        Goal: fire real haptics during a trace by retargeting a genuine knob-drag.
-        Run T1 first, then T2–T4. Report buzzes + the gold counters.
+        T5 is the one that matters now. If swiping the strip buzzes per tile, the
+        game gets real haptics in plain Safari. If flips count but no buzz, report
+        that. If flips stay 0, toggle "pointer capture" off and retry; then
+        "show overlay" on to watch what the switch is doing.
       </p>
+
+      <TraceStrip note={note} />
 
       <div class="panel stack">
         <p class="kicker" style={{ margin: 0 }}>
-          T1 · knob drag baseline
+          T1 · baseline (for comparison)
         </p>
         <p class="muted" style={{ margin: 0 }}>
-          Put your finger ON the knob, drag slowly right, then left, then right —
-          WITHOUT lifting. (a) Does the knob follow your finger? (b) Do you feel a
-          buzz EACH time it flips, or only on the first/none? Then lift, and retry
-          starting your drag from the empty (track) end instead of the knob.
+          Drag the knob side to side without lifting — buzzes per flip (known
+          working).
         </p>
         <div style={{ display: 'grid', placeItems: 'center', height: 90, touchAction: 'pan-y' }}>
           <input
@@ -128,29 +173,6 @@ export function HapticsLab() {
           />
         </div>
       </div>
-
-      <FlipTest
-        id="T2"
-        title="auto-flip under a still finger (the mechanism)"
-        instructions="Press and HOLD your finger on the switch and keep it perfectly still. We slide the switch back and forth beneath it. Do you feel buzzes while holding? Watch the gold counter."
-        note={note}
-      />
-
-      <FlipTest
-        id="T3"
-        title="same, but nearly invisible"
-        instructions="Same hold-still test with the switch at 5% opacity — checks whether hiding it kills the haptic."
-        opacity={0.05}
-        note={note}
-      />
-
-      <FlipTest
-        id="T4"
-        title="same, under touch-action: none"
-        instructions="Same hold-still test inside a touch-action:none container (what the game board uses). If T2 buzzes but T4 doesn't, the board needs a different touch-action strategy."
-        touchAction="none"
-        note={note}
-      />
 
       <div class="panel">
         <p class="kicker">Log</p>
