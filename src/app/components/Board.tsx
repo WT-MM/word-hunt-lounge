@@ -148,10 +148,14 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     }
     if (best < 0) return prev
 
-    const core2 = cell2 * 0.2 // 0.45^2
-    const reach2 = cell2 * 0.38 // 0.62^2
-    // rival check in squared space: best must beat rival with ~0.08-cell slack
-    const decisive = bestD < reach2 && Math.sqrt(bestD) + Math.sqrt(cell2) * 0.08 < Math.sqrt(rivalD)
+    // Tighter zones than before: a tile only captures once the finger is
+    // genuinely into it. Big zones let an orthogonal neighbor intercept a
+    // diagonal swipe near the shared corner (where it sits ~0.71 cells away),
+    // so diagonals "wouldn't connect" — smaller reach lets the finger slip
+    // through the gap to the corner tile.
+    const core2 = cell2 * 0.16 // 0.40^2 — unconditional snap
+    const reach2 = cell2 * 0.25 // 0.50^2 — snap if also clearly nearest
+    const decisive = bestD < reach2 && Math.sqrt(bestD) + Math.sqrt(cell2) * 0.05 < Math.sqrt(rivalD)
     if (bestD < core2 || decisive) {
       return [...prev, best]
     }

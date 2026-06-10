@@ -61,19 +61,19 @@ export const sound = {
   /** Per-tile tick; pitch climbs with the trace length. */
   tick(step: number): void {
     const base = 440 + Math.min(step, 12) * 60
-    blip(base, base * 1.3, 55, 0, 0.045)
+    blip(base, base * 1.3, 55, 0, 0.22)
   },
   /** New valid word: quick two-note rise. */
   success(): void {
-    blip(660, 680, 70, 0, 0.06)
-    blip(980, 1020, 110, 70, 0.06)
+    blip(660, 680, 70, 0, 0.28)
+    blip(980, 1020, 120, 70, 0.28)
   },
   /** Already found: flat mid thunk. */
   dup(): void {
-    blip(330, 300, 80, 0, 0.04)
+    blip(330, 300, 90, 0, 0.2)
   },
   /** Not a word: low dud. */
   invalid(): void {
-    blip(190, 130, 100, 0, 0.045, 'sine')
+    blip(190, 130, 110, 0, 0.22, 'sine')
   },
 }
