@@ -49,10 +49,12 @@ async function main() {
   const segButtons = await page.$$('.seg button')
   await segButtons[1]!.click() // ranked
   await sleep(200)
-  const deal = await page.$$('.btn-primary')
-  await deal[deal.length - 1]!.click()
+  await page.evaluate(() => {
+    const buttons = [...document.querySelectorAll('button')]
+    buttons.find((b) => b.textContent?.trim() === 'Create board')?.click()
+  })
+  await page.waitForFunction(() => location.pathname.startsWith('/l/'), { timeout: 10_000 })
   await page.waitForSelector('.standings, .panel', { timeout: 10_000 })
-  await page.waitForFunction(() => location.pathname.startsWith('/l/'))
   await sleep(700)
   await shoot(page, '4-lounge-lobby')
 

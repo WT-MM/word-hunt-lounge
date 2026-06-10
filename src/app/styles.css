@@ -698,6 +698,13 @@ details.player-words .inner {
   padding: 6px 14px 12px;
 }
 
+.word-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ── misc ─────────────────────────────────────────────────────────────────── */
 
 .code-chip {

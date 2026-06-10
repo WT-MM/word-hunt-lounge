@@ -96,6 +96,7 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
           ? { rankedWindowH: Math.max(1, (lounge.deadlineAt - lounge.createdAt) / 3_600_000) }
           : {}),
         rematchOf: code,
+        ...(lounge.groupCode ? { groupId: lounge.groupCode } : {}),
       })
       navigate(`/l/${next.code}`)
     } catch {
@@ -134,8 +135,11 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
   return (
     <div class="stack fade-in">
       <header class="row space" style={{ marginTop: 6 }}>
-        <button class="btn btn-ghost btn-small" onClick={() => navigate('/')}>
-          ← Home
+        <button
+          class="btn btn-ghost btn-small"
+          onClick={() => navigate(lounge.groupCode ? `/g/${lounge.groupCode}` : '/')}
+        >
+          ← {lounge.groupCode ? 'Group' : 'Home'}
         </button>
         <div class="row" style={{ gap: 8 }}>
           {modeBadge(lounge.mode)}
@@ -247,6 +251,28 @@ export function Lounge({ code, identity, navigate }: LoungeProps) {
               ))}
             </div>
           </div>
+
+          {results.allWords && (
+            <details class="player-words">
+              <summary>
+                <span>All {results.allWords.length} words on this board</span>
+                <b class="mono-num">{results.allWords[0]?.score ?? 0}</b>
+              </summary>
+              <div class="inner wordcols word-scroll">
+                {results.allWords.map((t) => (
+                  <div key={t.word} class="wordrow">
+                    <span class="w">
+                      {t.word}
+                      {t.foundBy.length > 0 && (
+                        <span class="finders">{t.foundBy.map((id) => names[id] ?? '?').join(', ')}</span>
+                      )}
+                    </span>
+                    <span class="s mono-num">{t.score}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
 
           <div class="stack">
             {results.standings.map((s) => (

@@ -18,6 +18,7 @@ export interface LoungeRow {
   word_count: number
   deadline_at: number | null
   rematch_code: string | null
+  group_id: string | null
   created_by: string
   created_at: number
   finalized_at: number | null
@@ -35,7 +36,7 @@ export interface RoundRow {
 
 /** Explicit column list — `solutions` must never ride along on polled reads. */
 const LOUNGE_COLS =
-  'id, mode, status, board, duration_s, word_count, deadline_at, rematch_code, created_by, created_at, finalized_at'
+  'id, mode, status, board, duration_s, word_count, deadline_at, rematch_code, group_id, created_by, created_at, finalized_at'
 
 export async function getLounge(db: D1Database, code: string): Promise<LoungeRow | null> {
   return await db
@@ -73,4 +74,16 @@ export function isRoundLive(round: RoundRow, now: number): boolean {
 
 export function boardTiles(lounge: Pick<LoungeRow, 'board'>): string[] {
   return lounge.board.split(' ')
+}
+
+export async function isGroupMember(
+  db: D1Database,
+  groupId: string,
+  playerId: string,
+): Promise<boolean> {
+  const row = await db
+    .prepare('SELECT 1 AS ok FROM group_members WHERE group_id = ? AND player_id = ?')
+    .bind(groupId, playerId)
+    .first<{ ok: number }>()
+  return row?.ok === 1
 }

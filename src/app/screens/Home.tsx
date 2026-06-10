@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
-import { ApiError, type Profile, api } from '../api'
+import { ApiError, type GroupSummary, type Profile, api } from '../api'
 import { Spinner, deltaChip, modeBadge, useToast } from '../components/bits'
 
 interface HomeProps {
@@ -9,18 +9,48 @@ interface HomeProps {
 
 export function Home({ navigate, onIdentityLost }: HomeProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [groups, setGroups] = useState<GroupSummary[] | null>(null)
   const [mode, setMode] = useState<'casual' | 'ranked'>('casual')
   const [durationS, setDurationS] = useState(80)
   const [windowH, setWindowH] = useState(24)
   const [busy, setBusy] = useState(false)
   const [showCode, setShowCode] = useState(false)
+  const [groupName, setGroupName] = useState('')
+  const [joinCode, setJoinCode] = useState('')
   const [toast, showToast] = useToast()
 
   useEffect(() => {
     api.me().then(setProfile).catch((err) => {
       if (err instanceof ApiError && err.status === 401) onIdentityLost()
     })
+    api.myGroups().then((r) => setGroups(r.groups)).catch(() => setGroups([]))
   }, [])
+
+  const createGroup = async () => {
+    const name = groupName.trim()
+    if (!name || busy) return
+    setBusy(true)
+    try {
+      const g = await api.createGroup(name)
+      navigate(`/g/${g.code}`)
+    } catch {
+      showToast('Could not create group')
+      setBusy(false)
+    }
+  }
+
+  const joinGroup = async () => {
+    const code = joinCode.trim()
+    if (!code || busy) return
+    setBusy(true)
+    try {
+      const g = await api.joinGroup(code)
+      navigate(`/g/${g.code}`)
+    } catch {
+      showToast('No group found for that code')
+      setBusy(false)
+    }
+  }
 
   const create = async () => {
     if (busy) return
@@ -66,7 +96,7 @@ export function Home({ navigate, onIdentityLost }: HomeProps) {
           </button>
         </div>
         <div class="seg">
-          {[60, 80, 120].map((d) => (
+          {[40, 60, 80].map((d) => (
             <button key={d} class={durationS === d ? 'on' : ''} onClick={() => setDurationS(d)}>
               {d}s
             </button>
@@ -89,6 +119,65 @@ export function Home({ navigate, onIdentityLost }: HomeProps) {
         <button class="btn btn-primary" disabled={busy} onClick={create}>
           {busy ? 'Creating…' : 'Create board'}
         </button>
+      </div>
+
+      <div class="panel stack">
+        <p class="kicker" style={{ margin: 0 }}>
+          Groups
+        </p>
+        <p class="muted" style={{ margin: 0 }}>
+          Make a group, share one invite link, and everyone plays every board you post — no
+          re-sharing each round.
+        </p>
+        {groups && groups.length > 0 && (
+          <div>
+            {groups.map((g) => (
+              <a
+                key={g.code}
+                class="recent-row"
+                href={`/g/${g.code}`}
+                onClick={(e) => {
+                  e.preventDefault()
+                  navigate(`/g/${g.code}`)
+                }}
+              >
+                <span class="code" style={{ letterSpacing: 0 }}>
+                  {g.name}
+                </span>
+                <span class="muted" style={{ fontSize: 12 }}>
+                  {g.member_count} {g.member_count === 1 ? 'member' : 'members'} · {g.board_count}{' '}
+                  {g.board_count === 1 ? 'board' : 'boards'}
+                </span>
+              </a>
+            ))}
+          </div>
+        )}
+        <div class="row" style={{ gap: 8 }}>
+          <input
+            class="input"
+            placeholder="New group name"
+            maxLength={20}
+            value={groupName}
+            onInput={(e) => setGroupName((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => e.key === 'Enter' && createGroup()}
+          />
+          <button class="btn btn-primary btn-small" disabled={busy || !groupName.trim()} onClick={createGroup}>
+            Create
+          </button>
+        </div>
+        <div class="row" style={{ gap: 8 }}>
+          <input
+            class="input"
+            placeholder="Join code"
+            autocapitalize="characters"
+            value={joinCode}
+            onInput={(e) => setJoinCode((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => e.key === 'Enter' && joinGroup()}
+          />
+          <button class="btn btn-ghost btn-small" disabled={busy || !joinCode.trim()} onClick={joinGroup}>
+            Join
+          </button>
+        </div>
       </div>
 
       {!profile ? (

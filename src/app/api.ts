@@ -87,6 +87,7 @@ export interface LoungeView {
   rematchCode: string | null
   createdAt: number
   finalizedAt: number | null
+  groupCode: string | null
   createdByName: string | null
   players: LoungePlayer[]
   you: {
@@ -112,6 +113,37 @@ export interface ResultsView extends Omit<LoungeView, 'players' | 'createdByName
   stillPlaying: Array<{ playerId: string; name: string }>
   words?: Record<string, Array<{ word: string; score: number }>>
   topWords?: Array<{ word: string; score: number; foundBy: string[] }>
+  allWords?: Array<{ word: string; score: number; foundBy: string[] }>
+}
+
+export interface GroupSummary {
+  code: string
+  name: string
+  member_count: number
+  board_count: number
+  last_board_at: number | null
+}
+
+export interface GroupBoard {
+  code: string
+  mode: 'casual' | 'ranked'
+  status: 'open' | 'finalized'
+  durationS: number
+  wordCount: number
+  deadlineAt: number | null
+  createdByName: string | null
+  createdAt: number
+  playedCount: number
+  leader: { name: string; score: number } | null
+  youPlayed: boolean
+  yourScore: number | null
+}
+
+export interface GroupView {
+  code: string
+  name: string
+  members: Array<{ playerId: string; name: string; rating: number }>
+  boards: GroupBoard[]
 }
 
 export interface WordVerdict {
@@ -138,7 +170,13 @@ export const api = {
     durationS?: number
     rankedWindowH?: number
     rematchOf?: string
+    groupId?: string
   }) => request<{ code: string }>('/api/lounges', { body }),
+  createGroup: (name: string) => request<{ code: string; name: string }>('/api/groups', { body: { name } }),
+  joinGroup: (code: string) =>
+    request<{ code: string; name: string }>('/api/groups/join', { body: { code } }),
+  myGroups: () => request<{ groups: GroupSummary[] }>('/api/groups'),
+  getGroup: (code: string) => request<GroupView>(`/api/groups/${code}`),
   getLounge: (code: string) => request<LoungeView>(`/api/lounges/${code}`),
   startRound: (code: string) =>
     request<RoundSession>(`/api/lounges/${code}/rounds`, { method: 'POST', body: {} }),

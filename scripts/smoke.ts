@@ -305,6 +305,40 @@ async function main() {
   const shell = await fetch(`${BASE}/l/${code2}`)
   check(shell.status === 200 && (shell.headers.get('content-type') ?? '').includes('text/html'), 'lounge link serves HTML', shell.status)
 
+  // ---------------- groups ----------------
+  console.log('groups…')
+  const grp = await api('/api/groups', { body: { name: 'Test Crew' }, auth: ada })
+  check(grp.status === 201 && grp.json.code && grp.json.name === 'Test Crew', 'create group', grp.json)
+  const gcode = grp.json.code
+
+  const joined = await api('/api/groups/join', { body: { code: gcode }, auth: newBo })
+  check(joined.status === 200 && joined.json.code === gcode, 'join group', joined.json)
+  const cyNew = { ...cy } // cy not a member yet
+
+  const adaGroups = await api('/api/groups', { auth: ada })
+  check(adaGroups.json.groups.some((g: any) => g.code === gcode && g.member_count === 2), 'group lists members', adaGroups.json.groups)
+
+  // non-member can't read detail or post a board
+  const cyView = await api(`/api/groups/${gcode}`, { auth: cyNew })
+  check(cyView.status === 403, 'non-member blocked from group detail', cyView.status)
+  const cyBoard = await api('/api/lounges', { body: { groupId: gcode }, auth: cyNew })
+  check(cyBoard.status === 403, 'non-member cannot post group board', cyBoard.status)
+
+  // member posts a board into the group
+  const gboard = await api('/api/lounges', { body: { mode: 'casual', durationS: 80, groupId: gcode }, auth: ada })
+  check(gboard.status === 201, 'member posts group board', gboard.status)
+  const gview = await api(`/api/groups/${gcode}`, { auth: newBo })
+  check(gview.status === 200 && gview.json.boards.some((b: any) => b.code === gboard.json.code), 'group board visible to members', gview.json.boards?.length)
+  const gloungeView = await api(`/api/lounges/${gboard.json.code}`, { auth: newBo })
+  check(gloungeView.json.groupCode === gcode, 'lounge carries its group code', gloungeView.json.groupCode)
+
+  const badGroup = await api(`/api/groups/ZZZZZ`, { auth: ada })
+  check(badGroup.status === 404, 'unknown group 404s', badGroup.status)
+
+  // all-words list present once revealed (ada's finalized ranked board)
+  const fullWords = await api(`/api/lounges/${code2}/results`, { auth: ada })
+  check(Array.isArray(fullWords.json.allWords) && fullWords.json.allWords.length >= fullWords.json.topWords.length, 'results expose full word list', fullWords.json.allWords?.length)
+
   console.log(`\nsmoke: ${passed} passed, ${failed} failed`)
   process.exit(failed === 0 ? 0 : 1)
 }

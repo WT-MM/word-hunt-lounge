@@ -20,7 +20,20 @@ export async function loungeShell(c: Context<AppEnv>): Promise<Response> {
   let title = 'Word Hunt Lounge'
   let description = 'One board, all your friends. Trace words, post your score.'
 
-  if (code) {
+  const isGroup = new URL(c.req.url).pathname.startsWith('/g/')
+  if (code && isGroup) {
+    const group = await c.env.DB.prepare(
+      `SELECT g.name,
+              (SELECT COUNT(*) FROM group_members m WHERE m.group_id = g.id) AS members
+       FROM groups g WHERE g.id = ?`,
+    )
+      .bind(code)
+      .first<{ name: string; members: number }>()
+    if (group) {
+      title = `Join "${group.name}" on Word Hunt`
+      description = `${group.members} ${group.members === 1 ? 'player' : 'players'} · tap to join the group and play every board.`
+    }
+  } else if (code) {
     const lounge = await getLounge(c.env.DB, code)
     if (lounge) {
       const creator = await c.env.DB.prepare('SELECT name FROM players WHERE id = ?')

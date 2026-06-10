@@ -154,6 +154,12 @@ export function Game({ code, session, onDone }: GameProps) {
         <Timer endsAt={session.endsAt} onExpire={finish} />
       </div>
 
+      {soundOn && found.length === 0 && (
+        <p class="muted" style={{ margin: 0, textAlign: 'center', fontSize: 12 }}>
+          🔔 Flip your phone off silent to hear the game.
+        </p>
+      )}
+
       <div class={`readout${readoutClass}`}>
         <span class={`word${shown ? ' show' : ''}`}>{shown}</span>
         {popups.map((p) => (

@@ -7,6 +7,7 @@ import { NameGate } from './components/NameGate'
 import { HapticsLab } from './components/HapticsLab'
 import { Home } from './screens/Home'
 import { Lounge } from './screens/Lounge'
+import { Group } from './screens/Group'
 
 function App() {
   const [path, setPath] = useState(location.pathname)
@@ -37,6 +38,17 @@ function App() {
         // key forces a clean remount when hopping lounge → rematch lounge
         key={loungeMatch[1]}
         code={loungeMatch[1].toUpperCase()}
+        identity={identity}
+        navigate={navigate}
+      />
+    )
+  }
+  const groupMatch = path.match(/^\/g\/([A-Za-z0-9-]+)/)
+  if (groupMatch) {
+    return (
+      <Group
+        key={groupMatch[1]}
+        code={groupMatch[1].toUpperCase()}
         identity={identity}
         navigate={navigate}
       />

@@ -19,6 +19,7 @@ import {
   boardTiles,
   getLounge,
   getRound,
+  isGroupMember,
   isRoundComplete,
   isRoundLive,
   roundEndsAt,
@@ -136,6 +137,7 @@ function publicLounge(lounge: LoungeRow) {
     wordCount: lounge.word_count,
     deadlineAt: lounge.deadline_at,
     rematchCode: lounge.rematch_code,
+    groupCode: lounge.group_id,
     createdAt: lounge.created_at,
     finalizedAt: lounge.finalized_at,
   }
@@ -155,21 +157,27 @@ lounges.post('/api/lounges', requireAuth, async (c) => {
   )
   const now = Date.now()
   await sweepExpiredLounges(c.env, now)
+  const player = c.get('player')
+
+  // optional group: the board becomes visible/playable to all members
+  const groupId = normalizeCode(body?.groupId)
+  if (groupId && !(await isGroupMember(c.env.DB, groupId, player.id))) {
+    return c.json({ error: 'not_member' }, 403)
+  }
 
   const trie = await loadTrie(c.env, c.req.url)
   const seeds = [...crypto.getRandomValues(new Uint32Array(3))]
   const board = generateBoard(trie, seeds)
   const solutions = JSON.stringify(Object.fromEntries(board.solutions))
   const deadlineAt = mode === 'ranked' ? Math.round(now + windowH * 3_600_000) : null
-  const player = c.get('player')
 
   let code: string | null = null
   for (let attempt = 0; attempt < 3 && code === null; attempt++) {
     const candidate = randomCode(6)
     try {
       await c.env.DB.prepare(
-        `INSERT INTO lounges (id, mode, status, board, seed, duration_s, solutions, word_count, deadline_at, created_by, created_at)
-         VALUES (?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO lounges (id, mode, status, board, seed, duration_s, solutions, word_count, deadline_at, group_id, created_by, created_at)
+         VALUES (?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
         .bind(
           candidate,
@@ -180,6 +188,7 @@ lounges.post('/api/lounges', requireAuth, async (c) => {
           solutions,
           board.solutions.size,
           deadlineAt,
+          groupId,
           player.id,
           now,
         )
@@ -456,12 +465,14 @@ lounges.get('/api/lounges/:code/results', async (c) => {
       JSON.parse(solutionsRow?.solutions ?? '{}') as Record<string, number>,
     )
     solutions.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    response.words = wordsByPlayer
-    response.topWords = solutions.slice(0, 15).map(([word, score]) => ({
+    const withFinders = solutions.map(([word, score]) => ({
       word,
       score,
       foundBy: foundBy.get(word) ?? [],
     }))
+    response.words = wordsByPlayer
+    response.topWords = withFinders.slice(0, 15)
+    response.allWords = withFinders // full board, scrollable on the client
   }
 
   return c.json(response)
