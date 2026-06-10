@@ -57,7 +57,13 @@ export function HapticsLab() {
           Haptics → System Haptics, and Low Power Mode).
         </p>
         <div style={{ fontSize: 28 }}>
-          <input type="checkbox" {...({ switch: '' } as Record<string, string>)} />
+          {/* `switch` must land as a DOM ATTRIBUTE: Safari also exposes it as
+              a property, so a falsy JSX value silently renders a checkbox */}
+          <input
+            type="checkbox"
+            ref={(el) => el?.setAttribute('switch', '')}
+            style={{ width: 52, height: 32 }}
+          />
         </div>
       </div>
       <div class="panel stack">
