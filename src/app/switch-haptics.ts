@@ -115,21 +115,23 @@ export class SwitchHapticDriver {
     this.lastY = y
   }
 
-  /** Ask for one haptic: arm a threshold crossing just ahead of the finger. */
+  /**
+   * Ask for one haptic: park the switch's (horizontal) flip threshold just
+   * ahead of the finger along its HORIZONTAL motion, so the next touchmove
+   * crosses it. WebKit's switch drag recognizer tracks screen-horizontal
+   * displacement only — it ignores CSS rotation — so a purely vertical
+   * finger move can't trigger a flip and is skipped here rather than faked.
+   */
   pulse(): void {
-    const speed = Math.hypot(this.vx, this.vy)
-    if (speed < 0.5) return // no direction to lead into; skip this one
-    const ux = this.vx / speed
-    const uy = this.vy / speed
-    const cx = this.lastX + ux * this.leadPx
-    const cy = this.lastY + uy * this.leadPx
-    const angle = Math.atan2(uy, ux)
-    // knob to the local-left ("off"), so the finger sits a hair short of the
-    // centerline and flips the value with its next forward movement (no
-    // change event fires for programmatic .checked writes, so this is silent)
-    this.input.checked = false
+    const dirX = this.vx > 0 ? 1 : this.vx < 0 ? -1 : 0
+    if (dirX === 0 || Math.abs(this.vx) < 0.4) return // no horizontal travel to cross
+    // place the centerline leadPx ahead in X; knob on the trailing side so the
+    // finger sits just short and crosses on its next forward movement
+    const cx = this.lastX + dirX * this.leadPx
+    const cy = this.lastY
+    this.input.checked = dirX < 0 // knob trails the motion
     this.input.style.transform =
-      `translate(${cx}px, ${cy}px) rotate(${angle}rad) scale(${this.pulseScale}) translate(${-SWITCH_W / 2}px, ${-SWITCH_H / 2}px)`
+      `translate(${cx}px, ${cy}px) scale(${this.pulseScale}) translate(${-SWITCH_W / 2}px, ${-SWITCH_H / 2}px)`
   }
 
   /** Park offscreen so nothing crosses until the next pulse(). */

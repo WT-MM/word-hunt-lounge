@@ -86,10 +86,13 @@ export function Game({ code, session, onDone }: GameProps) {
           : 'valid'
         : 'invalid'
 
+    // invalid clears fast (it's just noise); valid lingers so the score reads
+    const tileMs = kind === 'valid' ? 320 : 200
+    const wordMs = kind === 'valid' ? 700 : 320
     setFlash({ path, kind, key: Date.now() })
     setVerdictWord({ word, kind })
-    setTimeout(() => setFlash((f) => (f?.path === path ? null : f)), 350)
-    setTimeout(() => setVerdictWord((v) => (v?.word === word ? null : v)), 800)
+    setTimeout(() => setFlash((f) => (f?.path === path ? null : f)), tileMs)
+    setTimeout(() => setVerdictWord((v) => (v?.word === word ? null : v)), wordMs)
 
     if (kind === 'dup') sound.dup()
     if (kind === 'invalid') sound.invalid()
