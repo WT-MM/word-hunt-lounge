@@ -72,10 +72,17 @@ players.get('/api/me', requireAuth, async (c) => {
 
   // Re-read after the sweep so a just-finalized match is reflected.
   const fresh = await c.env.DB.prepare(
-    'SELECT name, rating, games_played FROM players WHERE id = ?',
+    'SELECT name, rating, games_played, wins, losses, ties FROM players WHERE id = ?',
   )
     .bind(player.id)
-    .first<{ name: string; rating: number; games_played: number }>()
+    .first<{
+      name: string
+      rating: number
+      games_played: number
+      wins: number
+      losses: number
+      ties: number
+    }>()
 
   const { results: recent } = await c.env.DB.prepare(
     `SELECT r.lounge_id AS code, r.score, r.started_at, r.finished_at, r.duration_s,
@@ -99,6 +106,9 @@ players.get('/api/me', requireAuth, async (c) => {
     name: fresh?.name ?? player.name,
     rating: fresh?.rating ?? player.rating,
     gamesPlayed: fresh?.games_played ?? player.games_played,
+    wins: fresh?.wins ?? 0,
+    losses: fresh?.losses ?? 0,
+    ties: fresh?.ties ?? 0,
     claimCode: player.claim_code,
     recent,
     ratingEvents,

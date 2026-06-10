@@ -218,7 +218,13 @@ export function Home({ navigate, onIdentityLost }: HomeProps) {
                   {profile.name}
                 </p>
                 <p class="muted" style={{ margin: '2px 0 0' }}>
-                  {profile.gamesPlayed} ranked {profile.gamesPlayed === 1 ? 'game' : 'games'}
+                  {profile.rating} elo
+                  {profile.gamesPlayed > 0 && (
+                    <>
+                      {' · '}
+                      {profile.wins}W–{profile.losses}L{profile.ties ? `–${profile.ties}T` : ''}
+                    </>
+                  )}
                   {profile.ratingEvents.length > 0 && (
                     <>
                       {' · last '}

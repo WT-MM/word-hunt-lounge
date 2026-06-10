@@ -270,11 +270,21 @@ async function main() {
   check(meAda.json.gamesPlayed === 1, 'ranked game counted (casual not)', meAda.json.gamesPlayed)
   check(meAda.json.ratingEvents.length === 1 && meAda.json.ratingEvents[0].code === code2, 'rating event recorded', meAda.json.ratingEvents)
   check(meAda.json.recent.length === 2, 'recent lounges listed', meAda.json.recent.length)
+  // ada beat both bo and cy on this 3-player board → pairwise 2W/0L
+  check(meAda.json.wins === 2 && meAda.json.losses === 0, 'pairwise W/L: winner 2-0', {
+    w: meAda.json.wins,
+    l: meAda.json.losses,
+  })
 
   const meCy = await api('/api/me', { auth: cy })
   check(meCy.json.rating === 1200 + expected.get(cy.id)!, 'cy elo applied', {
     got: meCy.json.rating,
     want: 1200 + expected.get(cy.id)!,
+  })
+  // cy lost to both → 0W/2L
+  check(meCy.json.wins === 0 && meCy.json.losses === 2, 'pairwise W/L: last 0-2', {
+    w: meCy.json.wins,
+    l: meCy.json.losses,
   })
 
   const finalView = await api(`/api/lounges/${code2}/results`)
@@ -334,6 +344,12 @@ async function main() {
 
   const badGroup = await api(`/api/groups/ZZZZZ`, { auth: ada })
   check(badGroup.status === 404, 'unknown group 404s', badGroup.status)
+
+  // group leaderboard carries records and is rating-sorted (ada won the ranked board)
+  const lb = await api(`/api/groups/${gcode}`, { auth: ada })
+  const adaMember = lb.json.members.find((m: any) => m.playerId === ada.id)
+  check(adaMember?.wins === 2 && adaMember?.losses === 0, 'group member shows pairwise W/L', adaMember)
+  check(lb.json.members[0].playerId === ada.id, 'members sorted by rating (winner first)', lb.json.members.map((m: any) => m.rating))
 
   // all-words list present once revealed (ada's finalized ranked board)
   const fullWords = await api(`/api/lounges/${code2}/results`, { auth: ada })

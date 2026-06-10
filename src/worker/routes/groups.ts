@@ -88,9 +88,10 @@ groups.get('/api/groups/:code', requireAuth, async (c) => {
   const now = Date.now()
 
   const { results: members } = await c.env.DB.prepare(
-    `SELECT p.id AS playerId, p.name, p.rating
+    `SELECT p.id AS playerId, p.name, p.rating, p.wins, p.losses, p.ties, p.games_played
      FROM group_members m JOIN players p ON p.id = m.player_id
-     WHERE m.group_id = ? ORDER BY m.joined_at`,
+     WHERE m.group_id = ?
+     ORDER BY p.rating DESC, p.wins DESC, m.joined_at`,
   )
     .bind(group.id)
     .all()

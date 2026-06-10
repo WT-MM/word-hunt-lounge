@@ -42,6 +42,9 @@ export interface Profile {
   name: string
   rating: number
   gamesPlayed: number
+  wins: number
+  losses: number
+  ties: number
   claimCode: string
   recent: Array<{
     code: string
@@ -139,10 +142,20 @@ export interface GroupBoard {
   yourScore: number | null
 }
 
+export interface GroupMember {
+  playerId: string
+  name: string
+  rating: number
+  wins: number
+  losses: number
+  ties: number
+  games_played: number
+}
+
 export interface GroupView {
   code: string
   name: string
-  members: Array<{ playerId: string; name: string; rating: number }>
+  members: GroupMember[]
   boards: GroupBoard[]
 }
 

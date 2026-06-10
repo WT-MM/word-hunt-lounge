@@ -38,13 +38,26 @@ export async function maybeFinalizeLounge(
     const deltas = eloDeltas(entrants)
     for (const entrant of entrants) {
       const delta = deltas.get(entrant.id) ?? 0
+      // pairwise W/L/T vs every co-participant on this board — the same
+      // comparison the Elo uses, so a 2nd-of-4 finish records 2W/1L
+      let wins = 0
+      let losses = 0
+      let ties = 0
+      for (const other of entrants) {
+        if (other.id === entrant.id) continue
+        if (entrant.score > other.score) wins++
+        else if (entrant.score < other.score) losses++
+        else ties++
+      }
       statements.push(
         db
           .prepare(
-            `UPDATE players SET rating = MAX(?, rating + ?), games_played = games_played + 1
+            `UPDATE players
+             SET rating = MAX(?, rating + ?), games_played = games_played + 1,
+                 wins = wins + ?, losses = losses + ?, ties = ties + ?
              WHERE id = ? AND ${guard}`,
           )
-          .bind(RATING_FLOOR, delta, entrant.id, lounge.id),
+          .bind(RATING_FLOOR, delta, wins, losses, ties, entrant.id, lounge.id),
         db
           .prepare(
             `INSERT INTO rating_events (id, lounge_id, player_id, delta, created_at)
