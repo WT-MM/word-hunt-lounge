@@ -16,7 +16,13 @@
 // native rendered size of the switch control in Safari
 const SWITCH_W = 51
 const SWITCH_H = 31
-const LEAD_PX = 6
+// knob circle center when unchecked (knob sits at the left end)
+const KNOB_CX = 15.5
+const KNOB_CY = 15.5
+const LEAD_PX = 2
+/** pulse-time scale: widens the control so fast frame-to-frame finger jumps
+    still land inside it instead of leaping clean over the threshold */
+const PULSE_SCALE = 2.5
 
 export class SwitchHapticDriver {
   private host: HTMLElement
@@ -53,11 +59,20 @@ export class SwitchHapticDriver {
     this.input.style.opacity = visible ? '0.55' : '0.02'
   }
 
-  /** Resting: stretch over the host so any touchstart lands on the switch. */
+  /**
+   * Resting: scale the switch so the KNOB ALONE covers the whole host.
+   * Knob-drag mode only engages when the touch starts on the knob —
+   * starting on the empty track arms tap-mode, where crossings don't
+   * register. With the knob covering everything, every trace engages drag.
+   */
   rest(): void {
+    this.input.checked = false // knob parks at the left end
     const w = this.host.clientWidth || SWITCH_W
     const h = this.host.clientHeight || SWITCH_H
-    this.input.style.transform = `scale(${w / SWITCH_W}, ${h / SWITCH_H})`
+    const s = Math.max(w, h) / 22 // knob diameter ≈ 27px native; oversize it
+    const tx = w / 2 - KNOB_CX * s
+    const ty = h / 2 - KNOB_CY * s
+    this.input.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`
   }
 
   /** Trace started (host-relative coords). */
@@ -86,12 +101,12 @@ export class SwitchHapticDriver {
     const cx = this.lastX + ux * LEAD_PX
     const cy = this.lastY + uy * LEAD_PX
     const angle = Math.atan2(uy, ux)
-    // knob to the local-left ("off"), so the finger sits in the off half and
-    // flips the value as it advances across the centerline (no change event
-    // fires for programmatic .checked writes, so this is silent)
+    // knob to the local-left ("off"), so the finger sits a hair short of the
+    // centerline and flips the value with its next forward movement (no
+    // change event fires for programmatic .checked writes, so this is silent)
     this.input.checked = false
     this.input.style.transform =
-      `translate(${cx}px, ${cy}px) rotate(${angle}rad) translate(${-SWITCH_W / 2}px, ${-SWITCH_H / 2}px)`
+      `translate(${cx}px, ${cy}px) rotate(${angle}rad) scale(${PULSE_SCALE}) translate(${-SWITCH_W / 2}px, ${-SWITCH_H / 2}px)`
   }
 
   /** Park offscreen so nothing crosses until the next pulse(). */
