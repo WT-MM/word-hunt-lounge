@@ -53,6 +53,13 @@ export class SwitchHapticDriver {
   pulseScale = 1
   /** 'knob' = knob covers the host at rest; 'stretch' = whole control does */
   restMode: 'knob' | 'stretch' = 'stretch'
+  /** experiment: sweep the threshold sideways under a vertically-moving
+      finger to coax a flip the horizontal recognizer otherwise can't see */
+  verticalOscillation = true
+
+  private oscActive = false
+  private oscSide = false
+  private oscDeadline = 0
 
   constructor(host: HTMLElement) {
     this.host = host
@@ -104,6 +111,7 @@ export class SwitchHapticDriver {
     this.lastY = y
     this.vx = 0
     this.vy = 0
+    this.oscActive = false
     this.park()
   }
 
@@ -123,13 +131,39 @@ export class SwitchHapticDriver {
    * finger move can't trigger a flip and is skipped here rather than faked.
    */
   pulse(): void {
-    const dirX = this.vx > 0 ? 1 : this.vx < 0 ? -1 : 0
-    if (dirX === 0 || Math.abs(this.vx) < 0.4) return // no horizontal travel to cross
-    // place the centerline leadPx ahead in X; knob on the trailing side so the
-    // finger sits just short and crosses on its next forward movement
-    const cx = this.lastX + dirX * this.leadPx
-    const cy = this.lastY
-    this.input.checked = dirX < 0 // knob trails the motion
+    if (Math.abs(this.vx) >= 0.4) {
+      // horizontal-enough: lead the threshold along the finger's X motion
+      this.oscActive = false
+      const dirX = this.vx > 0 ? 1 : -1
+      const cx = this.lastX + dirX * this.leadPx
+      this.input.checked = dirX < 0 // knob trails the motion
+      this.placeAt(cx, this.lastY)
+    } else if (this.verticalOscillation) {
+      // near-vertical: the recognizer can't see a horizontal crossing from the
+      // finger, so sweep the threshold sideways across it for a short burst
+      // while the finger keeps moving vertically — experiment #2
+      this.oscDeadline = (performance?.now?.() ?? 0) + 170
+      if (!this.oscActive) {
+        this.oscActive = true
+        this.oscStep()
+      }
+    }
+  }
+
+  private oscStep = (): void => {
+    if (!this.oscActive) return
+    if ((performance?.now?.() ?? 0) > this.oscDeadline) {
+      this.oscActive = false
+      this.park()
+      return
+    }
+    this.oscSide = !this.oscSide
+    this.input.checked = this.oscSide
+    this.placeAt(this.lastX + (this.oscSide ? this.leadPx : -this.leadPx), this.lastY)
+    setTimeout(() => requestAnimationFrame(this.oscStep), 38)
+  }
+
+  private placeAt(cx: number, cy: number): void {
     this.input.style.transform =
       `translate(${cx}px, ${cy}px) scale(${this.pulseScale}) translate(${-SWITCH_W / 2}px, ${-SWITCH_H / 2}px)`
   }
@@ -141,6 +175,7 @@ export class SwitchHapticDriver {
 
   /** Trace ended — restore full coverage for the next touchstart. */
   end(): void {
+    this.oscActive = false
     this.rest()
   }
 
