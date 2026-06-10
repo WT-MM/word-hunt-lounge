@@ -87,11 +87,20 @@ groups.get('/api/groups/:code', requireAuth, async (c) => {
   }
   const now = Date.now()
 
+  // per-group ladder (group_standings), with each player's global rating
+  // alongside; players with no group games yet default to 1200 / 0-0
   const { results: members } = await c.env.DB.prepare(
-    `SELECT p.id AS playerId, p.name, p.rating, p.wins, p.losses, p.ties, p.games_played
-     FROM group_members m JOIN players p ON p.id = m.player_id
+    `SELECT p.id AS playerId, p.name, p.rating AS globalRating,
+            COALESCE(gs.rating, 1200) AS rating,
+            COALESCE(gs.wins, 0) AS wins,
+            COALESCE(gs.losses, 0) AS losses,
+            COALESCE(gs.ties, 0) AS ties,
+            COALESCE(gs.games_played, 0) AS games_played
+     FROM group_members m
+     JOIN players p ON p.id = m.player_id
+     LEFT JOIN group_standings gs ON gs.group_id = m.group_id AND gs.player_id = p.id
      WHERE m.group_id = ?
-     ORDER BY p.rating DESC, p.wins DESC, m.joined_at`,
+     ORDER BY COALESCE(gs.rating, 1200) DESC, COALESCE(gs.wins, 0) DESC, m.joined_at`,
   )
     .bind(group.id)
     .all()

@@ -135,28 +135,31 @@ export function Group({ code, identity, navigate }: GroupProps) {
       </div>
 
       <div class="panel">
-        <p class="kicker">
-          Members · ranked by elo
-        </p>
+        <p class="kicker">Group standings · ranked here</p>
         <div class="standings">
           {group.members.map((m, i) => (
-            <div
-              key={m.playerId}
-              class={`standing${m.playerId === identity.id ? ' me' : ''}`}
-            >
-              <div class={`rank-chip${i < 3 ? ` r${i + 1}` : ''}`}>{i + 1}</div>
+            <div key={m.playerId} class={`standing${m.playerId === identity.id ? ' me' : ''}`}>
+              <div class={`rank-chip${m.games_played > 0 && i < 3 ? ` r${i + 1}` : ''}`}>
+                {i + 1}
+              </div>
               <div class="who">
                 <div class="name">{m.name}</div>
                 <div class="sub">
                   {m.games_played === 0
-                    ? 'no ranked games yet'
+                    ? 'no group games yet'
                     : `${m.wins}W–${m.losses}L${m.ties ? `–${m.ties}T` : ''}`}
+                  {' · global '}
+                  {m.globalRating}
                 </div>
               </div>
               <div class="pts">{m.rating}</div>
             </div>
           ))}
         </div>
+        <p class="muted" style={{ margin: '8px 2px 0', fontSize: 11.5 }}>
+          Group elo only counts ranked boards posted here. Your global elo on the home
+          screen spans every group.
+        </p>
       </div>
 
       <div class="panel stack">

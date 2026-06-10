@@ -345,11 +345,60 @@ async function main() {
   const badGroup = await api(`/api/groups/ZZZZZ`, { auth: ada })
   check(badGroup.status === 404, 'unknown group 404s', badGroup.status)
 
-  // group leaderboard carries records and is rating-sorted (ada won the ranked board)
+  // group ladder starts fresh & separate: only a casual group board exists so
+  // far, so group rating is the default 1200 / 0 games, even though ada's
+  // GLOBAL rating already moved from the earlier ranked board
   const lb = await api(`/api/groups/${gcode}`, { auth: ada })
-  const adaMember = lb.json.members.find((m: any) => m.playerId === ada.id)
-  check(adaMember?.wins === 2 && adaMember?.losses === 0, 'group member shows pairwise W/L', adaMember)
-  check(lb.json.members[0].playerId === ada.id, 'members sorted by rating (winner first)', lb.json.members.map((m: any) => m.rating))
+  const adaMember0 = lb.json.members.find((m: any) => m.playerId === ada.id)
+  check(adaMember0?.games_played === 0 && adaMember0?.rating === 1200, 'group ladder starts at 1200/0', adaMember0)
+  check(adaMember0?.globalRating === meAda.json.rating, 'group view also carries global rating', {
+    g: adaMember0?.globalRating,
+    glob: meAda.json.rating,
+  })
+
+  // a ranked board posted to the group moves BOTH ladders
+  const grWindowH = 22 / 3600
+  const grBoard = await api('/api/lounges', {
+    body: { mode: 'ranked', durationS: 5, rankedWindowH: grWindowH, groupId: gcode },
+    auth: ada,
+  })
+  check(grBoard.status === 201, 'create ranked group board', grBoard.status)
+  const grCode = grBoard.json.code
+  const playGroup = async (who: Identity, n: number) => {
+    const start = await api(`/api/lounges/${grCode}/rounds`, { method: 'POST', body: {}, auth: who })
+    const ws = playableWords(start.json.board)
+    for (let i = 0; i < n; i++) {
+      await api(`/api/lounges/${grCode}/words`, { body: { path: ws[i].path }, auth: who })
+    }
+    await api(`/api/lounges/${grCode}/finish`, { method: 'POST', body: {}, auth: who })
+  }
+  await playGroup(ada, 2) // ada wins the group board
+  await playGroup(newBo, 1) // bo second
+  const globalWinsBefore = meAda.json.wins
+
+  const grRemaining = grBoard.json.deadlineAt - Date.now()
+  console.log(`waiting ${Math.max(0, grRemaining)}ms for group board deadline…`)
+  if (grRemaining > 0) await sleep(grRemaining + 1000)
+  await api('/api/me', { auth: ada }) // sweep finalizes the expired group board
+
+  const lb2 = await api(`/api/groups/${gcode}`, { auth: ada })
+  const adaM = lb2.json.members.find((m: any) => m.playerId === ada.id)
+  const boM = lb2.json.members.find((m: any) => m.playerId === bo.id)
+  check(adaM?.games_played === 1 && adaM?.wins === 1 && adaM?.losses === 0, 'group ladder: ada 1 game, 1-0 here', adaM)
+  check(boM?.games_played === 1 && boM?.wins === 0 && boM?.losses === 1, 'group ladder: bo 0-1 here', boM)
+  check(adaM?.rating > 1200 && boM?.rating < 1200, 'group elo diverged from start', { ada: adaM?.rating, bo: boM?.rating })
+  check(lb2.json.members[0].playerId === ada.id, 'group leaderboard sorts by group elo', lb2.json.members.map((m: any) => m.rating))
+
+  // the same board also counted globally (separate, larger tally)
+  const meAdaFinal = await api('/api/me', { auth: ada })
+  check(meAdaFinal.json.wins === globalWinsBefore + 1, 'global ladder also incremented by the group board', {
+    before: globalWinsBefore,
+    after: meAdaFinal.json.wins,
+  })
+  check(adaM?.wins !== meAdaFinal.json.wins, 'group record is distinct from global record', {
+    group: adaM?.wins,
+    global: meAdaFinal.json.wins,
+  })
 
   // all-words list present once revealed (ada's finalized ranked board)
   const fullWords = await api(`/api/lounges/${code2}/results`, { auth: ada })

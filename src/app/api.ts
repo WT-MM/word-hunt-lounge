@@ -145,7 +145,8 @@ export interface GroupBoard {
 export interface GroupMember {
   playerId: string
   name: string
-  rating: number
+  rating: number // per-group Elo
+  globalRating: number
   wins: number
   losses: number
   ties: number
