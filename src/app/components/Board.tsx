@@ -74,14 +74,16 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
   }
 
   /**
-   * Snappy tile pickup. Two rules, evaluated against the LEGAL next tiles
+   * Eager, magnetic tile pickup, evaluated against the LEGAL next tiles
    * only (adjacent + unvisited):
    *  - core: finger inside a tile's inner circle → snap unconditionally
-   *  - handoff: finger decisively closer to a candidate than to the current
-   *    head AND than to any rival candidate (margin) → snap early, without
-   *    waiting to reach its core. This is what makes tracing feel magnetic
-   *    instead of "lingering on the wrong block"; the rival margin keeps
-   *    diagonal swipes from clipping orthogonal neighbors at corners.
+   *  - reach: snap as soon as the finger is within ~0.62 cells of a
+   *    candidate AND decisively nearer to it than to any rival candidate.
+   *    No midpoint requirement — on a straight move this captures at ~38%
+   *    of the way, which is what makes it feel like the tiles come to you.
+   *    The rival margin keeps diagonal swipes from clipping orthogonal
+   *    neighbors at corners; backtracking unwinds only inside the previous
+   *    tile's tighter core (0.40), so there's hysteresis, no flicker.
    */
   const pickPath = (clientX: number, clientY: number, prev: number[]): number[] => {
     const rect = rectRef.current
@@ -90,27 +92,30 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     const y = clientY - rect.top
     const cw = rect.width / 4
     const ch = rect.height / 4
-    const cell = Math.min(cw, ch)
-    const dist = (t: number) =>
-      Math.hypot(x - ((t % 4) + 0.5) * cw, y - (Math.floor(t / 4) + 0.5) * ch)
+    const cell2 = Math.min(cw, ch) ** 2
+    const dist2 = (t: number) => {
+      const dx = x - ((t % 4) + 0.5) * cw
+      const dy = y - (Math.floor(t / 4) + 0.5) * ch
+      return dx * dx + dy * dy
+    }
 
     if (prev.length === 0) {
       let best = -1
       let bestD = Infinity
       for (let t = 0; t < 16; t++) {
-        const d = dist(t)
+        const d = dist2(t)
         if (d < bestD) {
           best = t
           bestD = d
         }
       }
-      return bestD < cell * 0.48 ? [best] : prev
+      return bestD < cell2 * 0.23 ? [best] : prev // 0.48^2
     }
 
     const head = prev[prev.length - 1]
     // backtrack: finger firmly over the previous tile pops the head
-    if (prev.length >= 2 && dist(prev[prev.length - 2]) < cell * 0.4) {
-      return prev.slice(0, -1)
+    if (prev.length >= 2 && dist2(prev[prev.length - 2]) < cell2 * 0.16) {
+      return prev.slice(0, -1) // 0.40^2
     }
 
     let best = -1
@@ -118,7 +123,7 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     let rivalD = Infinity
     for (const t of NEIGHBORS[head]) {
       if (prev.includes(t)) continue
-      const d = dist(t)
+      const d = dist2(t)
       if (d < bestD) {
         rivalD = bestD
         bestD = d
@@ -129,10 +134,11 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     }
     if (best < 0) return prev
 
-    const core = cell * 0.42
-    const reach = cell * 0.62
-    const margin = cell * 0.1
-    if (bestD < core || (bestD < reach && bestD + margin < dist(head) && bestD + margin < rivalD)) {
+    const core2 = cell2 * 0.2 // 0.45^2
+    const reach2 = cell2 * 0.38 // 0.62^2
+    // rival check in squared space: best must beat rival with ~0.08-cell slack
+    const decisive = bestD < reach2 && Math.sqrt(bestD) + Math.sqrt(cell2) * 0.08 < Math.sqrt(rivalD)
+    if (bestD < core2 || decisive) {
       return [...prev, best]
     }
     return prev

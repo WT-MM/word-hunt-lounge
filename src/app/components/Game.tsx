@@ -113,6 +113,21 @@ export function Game({ code, session, onDone }: GameProps) {
     [tracePath, session.board],
   )
 
+  // memoized so per-tile trace re-renders don't re-diff dozens of chips
+  const foundStrip = useMemo(
+    () => (
+      <div class="found-strip">
+        {found.map((f) => (
+          <span key={f.word} class="found-chip">
+            {f.word}
+            <b>{f.score}</b>
+          </span>
+        ))}
+      </div>
+    ),
+    [found],
+  )
+
   const shown = liveWord ?? verdictWord?.word ?? null
   const readoutClass = liveWord ? '' : verdictWord ? ` v-${verdictWord.kind}` : ''
 
@@ -153,14 +168,7 @@ export function Game({ code, session, onDone }: GameProps) {
         onSubmit={submit}
       />
 
-      <div class="found-strip">
-        {found.map((f) => (
-          <span key={f.word} class="found-chip">
-            {f.word}
-            <b>{f.score}</b>
-          </span>
-        ))}
-      </div>
+      {foundStrip}
 
       <button class="btn btn-ghost" onClick={finish}>
         End round

@@ -1,36 +1,17 @@
 /**
- * Best-effort haptics:
- * - iOS Safari has no vibration API. Workaround (iOS 17.4+): toggling an
- *   <input type="checkbox" switch> fires the system toggle haptic. The
- *   reliable invocation (per the ios-haptics library): wrap it in a
- *   <label> appended to document.head — head children never render, so
- *   nothing can flag them hidden — and click the LABEL, synchronously.
- * - Elsewhere: navigator.vibrate.
- * Visit /haptics for a device test page.
+ * Best-effort haptics.
+ *
+ * iOS: none. Verified on-device (iOS 26.5): a real finger-flicked switch
+ * control buzzes, but programmatic clicks on one do not — Apple closed the
+ * iOS 17.4–18 checkbox-switch loophole by gating the haptic on genuine user
+ * interaction. No invocation works, so we don't burn pointermove time on
+ * DOM churn for nothing (see /haptics test page; sound.ts carries the feel).
+ *
+ * Android Chrome: navigator.vibrate.
  */
-const IOS =
-  typeof navigator !== 'undefined' &&
-  (/iP(hone|ad|od)/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
-
-function iosImpulse(): void {
-  const label = document.createElement('label')
-  const input = document.createElement('input')
-  input.type = 'checkbox'
-  input.setAttribute('switch', '')
-  label.appendChild(input)
-  document.head.appendChild(label)
-  label.click()
-  document.head.removeChild(label)
-}
-
-function impulse(ms: number): void {
+function vibrate(pattern: number | number[]): void {
   try {
-    if (IOS) {
-      iosImpulse()
-      return
-    }
-    if ('vibrate' in navigator) navigator.vibrate(ms)
+    if ('vibrate' in navigator) navigator.vibrate(pattern)
   } catch {
     /* haptics are decorative */
   }
@@ -38,11 +19,10 @@ function impulse(ms: number): void {
 
 /** One light tick — fired as each tile joins the trace. */
 export function hapticTick(): void {
-  impulse(10)
+  vibrate(10)
 }
 
-/** Slightly stronger double pulse for a scored word. */
+/** Slightly stronger pattern for a scored word. */
 export function hapticSuccess(): void {
-  impulse(15)
-  setTimeout(() => impulse(20), 90)
+  vibrate([12, 50, 20])
 }
