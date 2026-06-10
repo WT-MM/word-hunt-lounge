@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { isAdjacent } from '../../shared/path'
+import { NEIGHBORS } from '../../shared/solver'
 import { hapticTick } from '../haptics'
 import { sound, unlock } from '../sound'
 
@@ -73,30 +73,68 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     scheduleRedraw()
   }
 
-  const tileAt = (clientX: number, clientY: number): number | null => {
+  /**
+   * Snappy tile pickup. Two rules, evaluated against the LEGAL next tiles
+   * only (adjacent + unvisited):
+   *  - core: finger inside a tile's inner circle → snap unconditionally
+   *  - handoff: finger decisively closer to a candidate than to the current
+   *    head AND than to any rival candidate (margin) → snap early, without
+   *    waiting to reach its core. This is what makes tracing feel magnetic
+   *    instead of "lingering on the wrong block"; the rival margin keeps
+   *    diagonal swipes from clipping orthogonal neighbors at corners.
+   */
+  const pickPath = (clientX: number, clientY: number, prev: number[]): number[] => {
     const rect = rectRef.current
-    if (!rect) return null
+    if (!rect) return prev
     const x = clientX - rect.left
     const y = clientY - rect.top
-    if (x < 0 || y < 0 || x >= rect.width || y >= rect.height) return null
     const cw = rect.width / 4
     const ch = rect.height / 4
-    const col = Math.min(3, Math.floor(x / cw))
-    const row = Math.min(3, Math.floor(y / ch))
-    const dx = x - (col + 0.5) * cw
-    const dy = y - (row + 0.5) * ch
-    const radius = Math.min(cw, ch) * 0.42
-    if (dx * dx + dy * dy > radius * radius) return null
-    return row * 4 + col
-  }
+    const cell = Math.min(cw, ch)
+    const dist = (t: number) =>
+      Math.hypot(x - ((t % 4) + 0.5) * cw, y - (Math.floor(t / 4) + 0.5) * ch)
 
-  const extend = (tile: number | null, prev: number[]): number[] => {
-    if (tile === null) return prev
-    if (prev.length === 0) return [tile]
-    const last = prev[prev.length - 1]
-    if (tile === last) return prev
-    if (prev.length >= 2 && tile === prev[prev.length - 2]) return prev.slice(0, -1)
-    if (!prev.includes(tile) && isAdjacent(last, tile)) return [...prev, tile]
+    if (prev.length === 0) {
+      let best = -1
+      let bestD = Infinity
+      for (let t = 0; t < 16; t++) {
+        const d = dist(t)
+        if (d < bestD) {
+          best = t
+          bestD = d
+        }
+      }
+      return bestD < cell * 0.48 ? [best] : prev
+    }
+
+    const head = prev[prev.length - 1]
+    // backtrack: finger firmly over the previous tile pops the head
+    if (prev.length >= 2 && dist(prev[prev.length - 2]) < cell * 0.4) {
+      return prev.slice(0, -1)
+    }
+
+    let best = -1
+    let bestD = Infinity
+    let rivalD = Infinity
+    for (const t of NEIGHBORS[head]) {
+      if (prev.includes(t)) continue
+      const d = dist(t)
+      if (d < bestD) {
+        rivalD = bestD
+        bestD = d
+        best = t
+      } else if (d < rivalD) {
+        rivalD = d
+      }
+    }
+    if (best < 0) return prev
+
+    const core = cell * 0.42
+    const reach = cell * 0.62
+    const margin = cell * 0.1
+    if (bestD < core || (bestD < reach && bestD + margin < dist(head) && bestD + margin < rivalD)) {
+      return [...prev, best]
+    }
     return prev
   }
 
@@ -118,7 +156,7 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     trackFinger(e)
-    const first = extend(tileAt(e.clientX, e.clientY), [])
+    const first = pickPath(e.clientX, e.clientY, [])
     if (first.length > 0) {
       hapticTick()
       sound.tick(1)
@@ -129,7 +167,7 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
   const onPointerMove = (e: PointerEvent) => {
     if (!tracing.current) return
     trackFinger(e)
-    const next = extend(tileAt(e.clientX, e.clientY), pathRef.current)
+    const next = pickPath(e.clientX, e.clientY, pathRef.current)
     if (next !== pathRef.current) {
       // per tile joined (or popped on backtrack), like the original
       hapticTick()

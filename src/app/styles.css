@@ -584,6 +584,8 @@ body {
 .tile.sel {
   background: var(--tile-face-hi);
   box-shadow: 0 5px 0 var(--tile-edge), inset 0 0 0 3px #fff;
+  transform: scale(1.06);
+  transition: transform 0.05s ease-out;
 }
 
 .tile.f-valid {
