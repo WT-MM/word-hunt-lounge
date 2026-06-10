@@ -7,7 +7,7 @@ import { solveBoard } from '../src/shared/solver'
 import { MIN_WORD_LENGTH } from '../src/shared/score'
 
 // Build the real trie from the committed word list (fast: ~150ms).
-const words = readFileSync(join(__dirname, '..', 'data', 'enable1.txt'), 'utf8')
+const words = readFileSync(join(__dirname, '..', 'data', 'dictionary.txt'), 'utf8')
   .split('\n')
   .map((w) => w.trim())
   .filter((w) => w.length >= MIN_WORD_LENGTH && w.length <= 17 && /^[a-z]+$/.test(w))

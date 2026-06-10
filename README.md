@@ -38,7 +38,8 @@ npm run smoke              # full API e2e against the dev server (~60s)
 npx tsx scripts/screenshots.ts   # headless-Chrome UI walkthrough (needs Chrome)
 ```
 
-The dictionary (`data/enable1.txt`, public-domain ENABLE list) is compiled at
+The dictionary (`data/dictionary.txt`, Collins Scrabble Words 2019 — the closest
+known match to GamePigeon's unpublished list) is compiled at
 build time into a flat binary trie (`public/dict/trie.bin`) by
 `scripts/build-dict.ts` (runs automatically via predev/prebuild). This is
 load-bearing: the Workers **free tier allows 10ms CPU per request**, so the
@@ -72,7 +73,7 @@ word-hunt-lounge → Domains & Routes).
 | API + share pages | One Worker (Hono), `run_worker_first: ["/api/*", "/l/*"]` |
 | Frontend | Preact + Vite SPA, served as static assets (~12 KB gz) |
 | Data | D1 (SQLite): players, lounges, rounds, found_words, rating_events |
-| Dictionary | binary trie asset, built from ENABLE at build time |
+| Dictionary | binary trie asset, built from CSW19 at build time |
 | Ranked finalization | lazy — any read of an expired lounge finalizes it, plus a sweep on `/api/me` and lounge creation; applied atomically in one self-guarded `batch()` |
 | Live-ness | 5s polling (paused when the tab is hidden); no websockets needed for async play |
 
@@ -89,7 +90,7 @@ Notable invariants:
 ## Project layout
 
 ```
-data/enable1.txt        committed source word list
+data/dictionary.txt     committed source word list (CSW19)
 scripts/build-dict.ts   word list -> public/dict/trie.bin (binary trie)
 scripts/smoke.ts        API e2e: full ranked match incl. Elo settlement
 scripts/screenshots.ts  headless-Chrome UI verification

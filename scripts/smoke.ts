@@ -57,7 +57,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 // --- local solver mirror, to pick real words and paths -----------------------
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const dictWords = readFileSync(join(root, 'data', 'enable1.txt'), 'utf8')
+const dictWords = readFileSync(join(root, 'data', 'dictionary.txt'), 'utf8')
   .split('\n')
   .map((w) => w.trim())
   .filter((w) => w.length >= MIN_WORD_LENGTH && w.length <= 17 && /^[a-z]+$/.test(w))

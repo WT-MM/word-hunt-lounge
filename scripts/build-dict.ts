@@ -1,5 +1,5 @@
 /**
- * Compiles data/enable1.txt into public/dict/trie.bin (flat binary trie).
+ * Compiles data/dictionary.txt into public/dict/trie.bin (flat binary trie).
  * Runs at build time (predev/prebuild) because the Workers free tier allows
  * only 10ms CPU per request — runtime dictionary parsing is banned (PLAN §3).
  */
@@ -10,7 +10,7 @@ import { compileTrie } from '../src/shared/trie'
 import { MIN_WORD_LENGTH } from '../src/shared/score'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const source = join(root, 'data', 'enable1.txt')
+const source = join(root, 'data', 'dictionary.txt')
 const target = join(root, 'public', 'dict', 'trie.bin')
 
 // 16 tiles, one of which may be 'qu' → longest traceable word is 17 letters.
