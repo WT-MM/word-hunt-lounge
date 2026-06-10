@@ -33,9 +33,10 @@
 
 * {
   box-sizing: border-box;
-  /* iOS ignores user-scalable=no, so without this every tap waits ~300ms
-     for a possible double-tap zoom. The board overrides with `none`. */
-  touch-action: manipulation;
+  /* pan-y: taps are instant (no double-tap-zoom wait — iOS ignores
+     user-scalable=no) and pinch-zoom is off, so the page can't be picked
+     up and floated around. The board overrides with `none`. */
+  touch-action: pan-y;
 }
 
 html,
@@ -45,30 +46,39 @@ body {
 }
 
 html {
+  height: 100%;
+  overflow: hidden;
   background: var(--green-lo);
 }
 
+/* Fixed app shell: the document itself never scrolls or rubber-bands —
+   content scrolls inside #app. This is what makes it feel bolted down
+   instead of a floating web page. */
 body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   font-family: var(--font);
   font-weight: 700;
   color: var(--text);
-  /* plain in-flow gradient — background-attachment:fixed forces full-page
-     repaints on every scroll frame in iOS Safari */
   background: linear-gradient(180deg, var(--green-hi), var(--green-lo) 85%);
-  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: none;
 }
 
 #app {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   max-width: 480px;
   margin: 0 auto;
   padding: max(12px, env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
-  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -141,18 +151,17 @@ body {
   justify-content: space-between;
 }
 
+/* opacity-only: entrance motion reads as "floaty" in a game shell */
 .fade-in {
-  animation: fadeUp 0.25s ease-out both;
+  animation: fadeUp 0.15s ease-out both;
 }
 
 @keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 

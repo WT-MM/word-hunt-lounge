@@ -4,6 +4,7 @@ import '@fontsource-variable/nunito'
 import './styles.css'
 import { type Identity, loadIdentity } from './identity'
 import { NameGate } from './components/NameGate'
+import { HapticsLab } from './components/HapticsLab'
 import { Home } from './screens/Home'
 import { Lounge } from './screens/Lounge'
 
@@ -22,6 +23,8 @@ function App() {
     setPath(to)
     window.scrollTo(0, 0)
   }, [])
+
+  if (path === '/haptics') return <HapticsLab />
 
   if (!identity) {
     return <NameGate onReady={setIdentity} />
