@@ -19,10 +19,6 @@ const SWITCH_H = 31
 // knob circle center when unchecked (knob sits at the left end)
 const KNOB_CX = 15.5
 const KNOB_CY = 15.5
-const LEAD_PX = 2
-/** pulse-time scale: widens the control so fast frame-to-frame finger jumps
-    still land inside it instead of leaping clean over the threshold */
-const PULSE_SCALE = 2.5
 
 export class SwitchHapticDriver {
   private host: HTMLElement
@@ -34,6 +30,14 @@ export class SwitchHapticDriver {
   /** native value flips observed (each one should be a buzz) */
   crossings = 0
   onCross?: () => void
+
+  // tunables (device behavior mapped empirically via /haptics):
+  /** how far ahead of the finger the flip threshold is parked */
+  leadPx = 6
+  /** control scale at pulse time (bigger = harder to overshoot) */
+  pulseScale = 1
+  /** 'knob' = knob covers the host at rest; 'stretch' = whole control does */
+  restMode: 'knob' | 'stretch' = 'knob'
 
   constructor(host: HTMLElement) {
     this.host = host
@@ -69,10 +73,14 @@ export class SwitchHapticDriver {
     this.input.checked = false // knob parks at the left end
     const w = this.host.clientWidth || SWITCH_W
     const h = this.host.clientHeight || SWITCH_H
-    const s = Math.max(w, h) / 22 // knob diameter ≈ 27px native; oversize it
-    const tx = w / 2 - KNOB_CX * s
-    const ty = h / 2 - KNOB_CY * s
-    this.input.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`
+    if (this.restMode === 'knob') {
+      const s = Math.max(w, h) / 22 // knob diameter ≈ 27px native; oversize it
+      const tx = w / 2 - KNOB_CX * s
+      const ty = h / 2 - KNOB_CY * s
+      this.input.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`
+    } else {
+      this.input.style.transform = `scale(${w / SWITCH_W}, ${h / SWITCH_H})`
+    }
   }
 
   /** Trace started (host-relative coords). */
@@ -98,15 +106,15 @@ export class SwitchHapticDriver {
     if (speed < 0.5) return // no direction to lead into; skip this one
     const ux = this.vx / speed
     const uy = this.vy / speed
-    const cx = this.lastX + ux * LEAD_PX
-    const cy = this.lastY + uy * LEAD_PX
+    const cx = this.lastX + ux * this.leadPx
+    const cy = this.lastY + uy * this.leadPx
     const angle = Math.atan2(uy, ux)
     // knob to the local-left ("off"), so the finger sits a hair short of the
     // centerline and flips the value with its next forward movement (no
     // change event fires for programmatic .checked writes, so this is silent)
     this.input.checked = false
     this.input.style.transform =
-      `translate(${cx}px, ${cy}px) rotate(${angle}rad) scale(${PULSE_SCALE}) translate(${-SWITCH_W / 2}px, ${-SWITCH_H / 2}px)`
+      `translate(${cx}px, ${cy}px) rotate(${angle}rad) scale(${this.pulseScale}) translate(${-SWITCH_W / 2}px, ${-SWITCH_H / 2}px)`
   }
 
   /** Park offscreen so nothing crosses until the next pulse(). */

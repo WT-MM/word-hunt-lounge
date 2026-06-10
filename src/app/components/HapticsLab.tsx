@@ -24,6 +24,9 @@ function TraceStrip({ note }: { note: (msg: string) => void }) {
   const [flips, setFlips] = useState(0)
   const [showOverlay, setShowOverlay] = useState(false)
   const [capture, setCapture] = useState(true)
+  const [lead, setLead] = useState(6)
+  const [scale, setScale] = useState(1)
+  const [restMode, setRestMode] = useState<'knob' | 'stretch'>('knob')
 
   useEffect(() => {
     if (!hostRef.current) return
@@ -39,6 +42,15 @@ function TraceStrip({ note }: { note: (msg: string) => void }) {
   useEffect(() => {
     driverRef.current?.setVisible(showOverlay)
   }, [showOverlay])
+
+  useEffect(() => {
+    const driver = driverRef.current
+    if (!driver) return
+    driver.leadPx = lead
+    driver.pulseScale = scale
+    driver.restMode = restMode
+    driver.rest()
+  }, [lead, scale, restMode])
 
   const rel = (e: PointerEvent) => {
     const r = rectRef.current!
@@ -113,25 +125,73 @@ function TraceStrip({ note }: { note: (msg: string) => void }) {
         ))}
       </div>
       <p class="muted" style={{ margin: 0 }}>
-        cells: {cells} · native flips: <b style={{ color: 'var(--gold)' }}>{flips}</b>
+        cells: {cells} · native flips: <b style={{ color: 'var(--gold)' }}>{flips}</b> · config:
+        lead {lead}px / scale {scale} / rest {restMode}
       </p>
-      <div class="row" style={{ gap: 16 }}>
-        <label class="muted">
-          <input
-            type="checkbox"
-            checked={showOverlay}
-            onChange={(e) => setShowOverlay((e.target as HTMLInputElement).checked)}
-          />{' '}
-          show overlay
-        </label>
-        <label class="muted">
-          <input
-            type="checkbox"
-            checked={capture}
-            onChange={(e) => setCapture((e.target as HTMLInputElement).checked)}
-          />{' '}
-          pointer capture
-        </label>
+      <div class="stack" style={{ gap: 8 }}>
+        <div class="row" style={{ gap: 6 }}>
+          <span class="muted" style={{ width: 52 }}>
+            lead
+          </span>
+          {[2, 6, 12, 20].map((v) => (
+            <button
+              key={v}
+              class={`btn btn-ghost btn-small${lead === v ? ' on' : ''}`}
+              style={lead === v ? { background: 'var(--gold)', color: '#5d4524' } : {}}
+              onClick={() => setLead(v)}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+        <div class="row" style={{ gap: 6 }}>
+          <span class="muted" style={{ width: 52 }}>
+            scale
+          </span>
+          {[1, 1.75, 2.5].map((v) => (
+            <button
+              key={v}
+              class="btn btn-ghost btn-small"
+              style={scale === v ? { background: 'var(--gold)', color: '#5d4524' } : {}}
+              onClick={() => setScale(v)}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+        <div class="row" style={{ gap: 6 }}>
+          <span class="muted" style={{ width: 52 }}>
+            rest
+          </span>
+          {(['knob', 'stretch'] as const).map((v) => (
+            <button
+              key={v}
+              class="btn btn-ghost btn-small"
+              style={restMode === v ? { background: 'var(--gold)', color: '#5d4524' } : {}}
+              onClick={() => setRestMode(v)}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+        <div class="row" style={{ gap: 16 }}>
+          <label class="muted">
+            <input
+              type="checkbox"
+              checked={showOverlay}
+              onChange={(e) => setShowOverlay((e.target as HTMLInputElement).checked)}
+            />{' '}
+            show overlay
+          </label>
+          <label class="muted">
+            <input
+              type="checkbox"
+              checked={capture}
+              onChange={(e) => setCapture((e.target as HTMLInputElement).checked)}
+            />{' '}
+            pointer capture
+          </label>
+        </div>
       </div>
     </div>
   )
