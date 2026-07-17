@@ -42,6 +42,7 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
   const fingerRef = useRef<{ x: number; y: number } | null>(null)
   const rafRef = useRef(0)
   const tracing = useRef(false)
+  const activePointerRef = useRef<number | null>(null)
   const driverRef = useRef<SwitchHapticDriver | null>(null)
   const [path, setPath] = useState<number[]>([])
 
@@ -172,7 +173,9 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
   }
 
   const onPointerDown = (e: PointerEvent) => {
-    if (disabled) return
+    if (disabled || !e.isPrimary || activePointerRef.current !== null) return
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    activePointerRef.current = e.pointerId
     tracing.current = true
     unlock() // AudioContext needs a user gesture; this is the earliest one
     const rect = gridRef.current?.getBoundingClientRect() ?? null
@@ -181,7 +184,13 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
       svgRef.current.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`)
       lineRef.current?.setAttribute('stroke-width', String(rect.width * 0.058))
     }
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    // Touch pointers already receive implicit capture. More importantly, the
+    // iOS switch driver must keep ownership of the genuine native gesture;
+    // transferring capture to the wrapper prevents its value crossings (and
+    // therefore its Taptic feedback). Other platforms use explicit capture.
+    if (!driverRef.current) {
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    }
     const rect2 = rectRef.current
     if (rect2) driverRef.current?.begin(e.clientX - rect2.left, e.clientY - rect2.top)
     trackFinger(e)
@@ -194,11 +203,23 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
   }
 
   const onPointerMove = (e: PointerEvent) => {
-    if (!tracing.current) return
-    trackFinger(e)
-    const next = pickPath(e.clientX, e.clientY, pathRef.current)
+    if (!tracing.current || activePointerRef.current !== e.pointerId) return
+
+    // Browsers may combine several high-rate touch samples into one pointer
+    // event. Walk those samples in order so a fast swipe still visits every
+    // legal tile, then commit once per dispatched event to keep Preact, audio,
+    // and the haptic channel out of the hot path.
+    const coalesced = e.getCoalescedEvents?.() ?? []
+    const samples = coalesced.length > 0 ? coalesced : [e]
+    let next = pathRef.current
+    for (const sample of samples) {
+      trackFinger(sample)
+      next = pickPath(sample.clientX, sample.clientY, next)
+    }
+
     if (next !== pathRef.current) {
-      // per tile joined (or popped on backtrack), like the original
+      // One feedback pulse per rendered frame avoids platform throttling when
+      // several tile crossings arrive together.
       hapticTick()
       driverRef.current?.pulse()
       sound.tick(next.length)
@@ -208,9 +229,10 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
     }
   }
 
-  const endTrace = (submit: boolean) => {
-    if (!tracing.current) return
+  const endTrace = (pointerId: number, submit: boolean) => {
+    if (!tracing.current || activePointerRef.current !== pointerId) return
     tracing.current = false
+    activePointerRef.current = null
     fingerRef.current = null
     driverRef.current?.end()
     const final = pathRef.current
@@ -226,8 +248,8 @@ export function Board({ tiles, disabled, flash, onTrace, onSubmit }: BoardProps)
       ref={wrapRef}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
-      onPointerUp={() => endTrace(true)}
-      onPointerCancel={() => endTrace(false)}
+      onPointerUp={(e) => endTrace(e.pointerId, true)}
+      onPointerCancel={(e) => endTrace(e.pointerId, false)}
     >
       <div class="board-grid" ref={gridRef}>
         {tiles.map((letter, i) => (
