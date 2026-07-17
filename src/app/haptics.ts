@@ -7,10 +7,12 @@
  *    modern iOS: Safari has no vibration API, and Apple patched the
  *    checkbox-switch click() loophole in iOS 26.5 (verified on-device —
  *    a real finger-flicked switch buzzes, programmatic clicks don't),
- *    so we don't burn pointermove time attempting it.
+ *    so we don't burn pointermove time attempting it directly.
  * 2. navigator.vibrate — Android Chrome.
+ * 3. Plain iOS Safari 18+ uses the genuine switch-drag mechanism in
+ *    switch-haptics.ts; that path has to retain ownership of the touch.
  *
- * Plain iOS Safari gets sound (sound.ts) as the feel channel.
+ * Sound remains the fallback when none of those channels is available.
  */
 interface HapticBridge {
   postMessage(kind: string): void

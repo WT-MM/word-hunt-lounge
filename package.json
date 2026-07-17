@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1",
-    "@cloudflare/workers-types": "^4.20260609.1",
+    "@cloudflare/workers-types": "^5.20260717.1",
     "@preact/preset-vite": "^2",
     "@types/node": "^25.9.2",
     "puppeteer-core": "^25.1.0",

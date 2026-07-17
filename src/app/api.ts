@@ -12,7 +12,7 @@ export class ApiError extends Error {
 
 async function request<T>(
   path: string,
-  opts: { method?: string; body?: unknown; auth?: boolean } = {},
+  opts: { method?: string; body?: unknown; auth?: boolean; timeoutMs?: number } = {},
 ): Promise<T> {
   const headers: Record<string, string> = {}
   if (opts.body !== undefined) headers['content-type'] = 'application/json'
@@ -20,11 +20,19 @@ async function request<T>(
     const identity = loadIdentity()
     if (identity) headers.authorization = `Bearer ${identity.id}.${identity.token}`
   }
-  const res = await fetch(path, {
-    method: opts.method ?? (opts.body !== undefined ? 'POST' : 'GET'),
-    headers,
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-  })
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), opts.timeoutMs ?? 15_000)
+  let res: Response
+  try {
+    res = await fetch(path, {
+      method: opts.method ?? (opts.body !== undefined ? 'POST' : 'GET'),
+      headers,
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timeout)
+  }
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     // a 401 with a stored identity means the token is stale (DB reset, claim
@@ -195,7 +203,7 @@ export const api = {
   startRound: (code: string) =>
     request<RoundSession>(`/api/lounges/${code}/rounds`, { method: 'POST', body: {} }),
   submitWord: (code: string, path: number[]) =>
-    request<WordVerdict>(`/api/lounges/${code}/words`, { body: { path } }),
+    request<WordVerdict>(`/api/lounges/${code}/words`, { body: { path }, timeoutMs: 4_000 }),
   finishRound: (code: string) =>
     request<{ score: number; found: Array<{ word: string; score: number }> }>(
       `/api/lounges/${code}/finish`,

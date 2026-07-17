@@ -203,9 +203,13 @@ lounges.post('/api/lounges', requireAuth, async (c) => {
   const rematchOf = normalizeCode(body?.rematchOf)
   if (rematchOf) {
     await c.env.DB.prepare(
-      'UPDATE lounges SET rematch_code = ? WHERE id = ? AND rematch_code IS NULL',
+      `UPDATE lounges SET rematch_code = ?
+       WHERE id = ? AND rematch_code IS NULL
+         AND (created_by = ? OR EXISTS (
+           SELECT 1 FROM rounds WHERE lounge_id = lounges.id AND player_id = ?
+         ))`,
     )
-      .bind(code, rematchOf)
+      .bind(code, rematchOf, player.id, player.id)
       .run()
   }
   return c.json({ code, mode, status: 'open', durationS, deadlineAt, wordCount: board.solutions.size }, 201)

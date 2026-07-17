@@ -144,6 +144,16 @@ async function main() {
   check(created.json.wordCount >= 80, 'board quality gate', created.json.wordCount)
   const code1 = created.json.code
 
+  // A player who neither created nor played a board must not be able to
+  // attach an arbitrary rematch link to it.
+  const hijack = await api('/api/lounges', {
+    body: { mode: 'casual', durationS: 5, rematchOf: code1 },
+    auth: evil.json,
+  })
+  check(hijack.status === 201, 'unrelated player can still create their own board', hijack.status)
+  const beforePlay = await api(`/api/lounges/${code1}`)
+  check(beforePlay.json.rematchCode === null, 'unrelated player cannot hijack rematch link', beforePlay.json.rematchCode)
+
   let view = await api(`/api/lounges/${code1}`, { auth: ada })
   check(view.status === 200 && view.json.players.length === 0, 'fresh lounge empty', view.json)
   check(!('board' in view.json), 'board not leaked pre-round', Object.keys(view.json))

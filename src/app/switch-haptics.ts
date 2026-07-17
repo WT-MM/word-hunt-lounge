@@ -15,13 +15,39 @@
 
 /** Only iOS Safari needs (and supports) this; the native shell bridge and
     Android's navigator.vibrate are better channels when present. */
+export function switchHapticsSupportedFor(
+  userAgent: string,
+  platform: string,
+  maxTouchPoints: number,
+): boolean {
+  const mobileIOS = /iP(hone|ad|od)/.test(userAgent)
+  const desktopModeIPad = platform === 'MacIntel' && maxTouchPoints > 1
+  if (!mobileIOS && !desktopModeIPad) return false
+
+  // WebKit only added native haptic feedback to checkbox switches in iOS
+  // 18. On older releases the full-board control would steal the gesture
+  // without providing any benefit.
+  const osVersion = userAgent.match(/OS (\d+)[._]/)?.[1]
+  const browserVersion = userAgent.match(/(?:Version|CriOS|FxiOS)\/(\d+)/)?.[1]
+  const major = Number(osVersion ?? browserVersion ?? 0)
+  return major >= 18
+}
+
 export function switchHapticsApplicable(): boolean {
   try {
     const w = window as unknown as Record<string, any>
+    const nav = navigator as unknown as {
+      vibrate?: unknown
+      userAgent: string
+      platform: string
+      maxTouchPoints: number
+    }
     if (w.webkit?.messageHandlers?.haptic) return false // native shell
-    return (
-      /iP(hone|ad|od)/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    if (typeof nav.vibrate === 'function') return false
+    return switchHapticsSupportedFor(
+      nav.userAgent,
+      nav.platform,
+      nav.maxTouchPoints,
     )
   } catch {
     return false
@@ -41,7 +67,6 @@ export class SwitchHapticDriver {
   private lastX = 0
   private lastY = 0
   private vx = 0
-  private vy = 0
   /** native value flips observed (each one should be a buzz) */
   crossings = 0
   onCross?: () => void
@@ -103,14 +128,12 @@ export class SwitchHapticDriver {
     this.lastX = x
     this.lastY = y
     this.vx = 0
-    this.vy = 0
     this.park()
   }
 
   /** Call on every pointermove (host-relative coords). */
   track(x: number, y: number): void {
     this.vx = x - this.lastX
-    this.vy = y - this.lastY
     this.lastX = x
     this.lastY = y
   }

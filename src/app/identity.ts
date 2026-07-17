@@ -6,6 +6,7 @@ export interface Identity {
 }
 
 const KEY = 'whl.identity'
+export const IDENTITY_CLEARED_EVENT = 'whl:identity-cleared'
 
 export function loadIdentity(): Identity | null {
   try {
@@ -25,4 +26,5 @@ export function saveIdentity(identity: Identity): void {
 
 export function clearIdentity(): void {
   localStorage.removeItem(KEY)
+  window.dispatchEvent(new Event(IDENTITY_CLEARED_EVENT))
 }

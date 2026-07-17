@@ -57,7 +57,9 @@ export function Game({ code, session, onDone }: GameProps) {
   const [verdictWord, setVerdictWord] = useState<{ word: string; kind: Flash['kind'] } | null>(null)
   const [popups, setPopups] = useState<Popup[]>([])
   const [soundOn, setSoundOn] = useState(soundEnabled())
+  const [isFinishing, setIsFinishing] = useState(false)
   const finishing = useRef(false)
+  const pendingSubmissions = useRef(new Set<Promise<unknown>>())
   const popupId = useRef(0)
 
   // verdicts are computed locally against the shipped solution set, so
@@ -69,7 +71,16 @@ export function Game({ code, session, onDone }: GameProps) {
   const finish = async () => {
     if (finishing.current) return
     finishing.current = true
+    setIsFinishing(true)
     try {
+      // A fast tap on "End round" (or the timer) can otherwise mark the
+      // round finished before the final background word request arrives.
+      // Give already-started submissions most of the server's 3s grace
+      // window to settle, without ever trapping the player on this screen.
+      await Promise.race([
+        Promise.allSettled([...pendingSubmissions.current]),
+        new Promise((resolve) => setTimeout(resolve, 2_200)),
+      ])
       await api.finishRound(code)
     } catch {
       /* lapses server-side anyway */
@@ -78,6 +89,7 @@ export function Game({ code, session, onDone }: GameProps) {
   }
 
   const submit = (path: number[]) => {
+    if (finishing.current) return
     const word = wordFromPath(session.board, path)
     const kind: Flash['kind'] =
       word.length >= MIN_WORD_LENGTH && solutions.has(word)
@@ -106,8 +118,14 @@ export function Game({ code, session, onDone }: GameProps) {
       const id = ++popupId.current
       setPopups((prev) => [...prev, { id, text: `+${score}` }])
       setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 900)
-      // record in the background; the UI never waits on the network
-      api.submitWord(code, path).catch(() => undefined)
+      // Record in the background, but retain the promise so finish() can
+      // drain the last word instead of racing it.
+      let pending: Promise<unknown>
+      pending = api
+        .submitWord(code, path)
+        .catch(() => undefined)
+        .finally(() => pendingSubmissions.current.delete(pending))
+      pendingSubmissions.current.add(pending)
     }
   }
 
@@ -171,7 +189,7 @@ export function Game({ code, session, onDone }: GameProps) {
 
       <Board
         tiles={session.board}
-        disabled={false}
+        disabled={isFinishing}
         flash={flash}
         onTrace={setTracePath}
         onSubmit={submit}
@@ -179,8 +197,8 @@ export function Game({ code, session, onDone }: GameProps) {
 
       {foundStrip}
 
-      <button class="btn btn-ghost" onClick={finish}>
-        End round
+      <button class="btn btn-ghost" disabled={isFinishing} onClick={finish}>
+        {isFinishing ? 'Finishing…' : 'End round'}
       </button>
     </div>
   )

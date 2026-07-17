@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'preact/hooks'
 import '@fontsource-variable/nunito'
 import './styles.css'
 import { installZoomGuards } from './zoom-guard'
-import { type Identity, loadIdentity } from './identity'
+import { IDENTITY_CLEARED_EVENT, type Identity, loadIdentity } from './identity'
 import { NameGate } from './components/NameGate'
 import { HapticsLab } from './components/HapticsLab'
 import { Home } from './screens/Home'
@@ -16,8 +16,13 @@ function App() {
 
   useEffect(() => {
     const onPop = () => setPath(location.pathname)
+    const onIdentityCleared = () => setIdentity(null)
     window.addEventListener('popstate', onPop)
-    return () => window.removeEventListener('popstate', onPop)
+    window.addEventListener(IDENTITY_CLEARED_EVENT, onIdentityCleared)
+    return () => {
+      window.removeEventListener('popstate', onPop)
+      window.removeEventListener(IDENTITY_CLEARED_EVENT, onIdentityCleared)
+    }
   }, [])
 
   const navigate = useCallback((to: string) => {
